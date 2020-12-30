@@ -1,5 +1,7 @@
 import numpy as npy
 import healpy as hp
+#import numexpr as ne
+
 
 import lcmetric.utils as ut
 import pyshtools as pysh
@@ -15,10 +17,13 @@ class Lightcone:
     metric_dt = {'a':None, }
     metric_f = {'a':None, 'Hubble':None, 'Hubble_dt':None}
 
-    sols = {'Phi':None, 'Pi':None, 'Omega':None}
+    sols = {'Phi':None, 'Pi':None}
+
+    
 
     Hubble_0 = None
     Hubble = None
+    a = None
     Hubble_dt = None
 
     angle_lap = None
@@ -63,80 +68,56 @@ class Lightcone:
         
     def da_dt(self, ntau):
         #return 0
-        return self.metric_a['a'] * self.Hubble
+        return self.metric_a['a'] * self.Hubble_a
 
     def dPhi_dt(self, ntau):
-        return (-2 / self.to_tau(ntau) + 2*self.metric_f['Hubble'][ntau]) * self.sols['Pi'][ntau] \
-            - (2 * self.metric_f['Hubble_dt'][ntau] -2 * self.metric_f['Hubble'][ntau]**2) \
-            * self.sols['Phi'][ntau] \
-            + 1.5 * self.Hubble_0**2 * self.Omega_m * self.matter['delta'][ntau] \
-            / self.metric_f['a'][ntau] \
-            - self.angle_lap + 3 * self.Hubble_0**2 * self.Omega_m * self.matter['vw'][ntau]
+        return (-2 / self.tau_list[ntau] + 2*self.Hubble[ntau]) * self.Pi[ntau] \
+            - (2 * self.Hubble_dt[ntau] -2 * self.Hubble[ntau]**2) \
+            * self.Phi[ntau] \
+            + 1.5 * self.Hubble_0**2 * self.Omega_m / self.a[ntau] * self.delta[ntau] \
+            - self.angle_lap + 3 * self.Hubble_0**2 * self.Omega_m * self.vw[ntau]
 
-        return self.sols['Omega'][ntau]
+        # return ne.evaluate("(-2 / tau_list + 2*Hubble) * Pi \
+        #     - (2 * Hubble_dt -2 * Hubble**2) \
+        #     * Phi \
+        #     + 1.5 * Hubble_0**2 * Omega_m / a * delta \
+        #     - angle_lap + 3 * Hubble_0**2 * Omega_m * vw",   \
+        # local_dict = {'tau_list': self.tau_list[ntau], 'Hubble': self.Hubble[ntau], \
+        #               'Hubble_dt':self.Hubble_dt[ntau],\
+        #               'Pi':self.Pi[ntau], 'Phi':self.Phi[ntau], \
+        #               'Hubble_0': self.Hubble_0, 'Omega_m':self.Omega_m,\
+        #               'a':self.a[ntau], 'delta':self.delta[ntau], 'angle_lap':self.angle_lap, \
+        #               'vw':self.vw[ntau]})
+
     
     def dPi_dt(self, ntau):
-        # if(ntau == self.Ntau): Omega = self.sols['Omega'][ntau]
-        # else: Omega = \
-        #     -(self.sols['Phi'][ntau + 1] - self.sols['Phi'][ntau-1]) / (2.0 * self.tau_i / self.Ntau)
-        #Omega = self.sols['Omega'][ntau]
-
-        # return - (self.sols['Phi'][ntau + 1] + self.sols['Phi'][ntau - 1] \
-        #           - 2.0 * self.sols['Phi'][ntau]) \
-        #           / (self.tau_i / self.Ntau)**2   \
-        #           - 3 * self.metric_f['Hubble'][ntau] / (2.0 * self.tau_i / self.Ntau) \
-        #           * (self.sols['Phi'][ntau + 1] - self.sols['Phi'][ntau-1]) \
-        #           - 2 * self.metric_f['Hubble'][ntau] * self.sols['Pi'][ntau] \
-        #           - (2 * self.metric_f['Hubble_dt'][ntau] + 4 * self.metric_f['Hubble'][ntau]**2) \
-        #           * self.sols['Phi'][ntau] \
-        #           + 1.5 * self.Hubble_0**2 * self.Omega_m * self.matter['vw'][ntau]
-
-        # return (2 / self.to_tau(ntau) - 4*self.metric_f['Hubble'][ntau]) * self.sols['Pi'][ntau] \
-        #     - 3 * self.metric_f['Hubble'][ntau] * Omega \
-        #     - 3 * self.metric_f['Hubble'][ntau]**2 * self.sols['Phi'][ntau] \
-        #     + self.angle_lap \
-        #     - 1.5 * self.Hubble_0**2 * self.Omega_m * self.matter['delta'][ntau] \
-        #     / self.metric_f['a'][ntau]\
-        #     - 1.5 * self.Hubble_0**2 * self.Omega_m * self.matter['vw'][ntau]
         if (ntau == self.Ntau):
-            Omega_dot = (self.sols['Phi'][ntau] + self.sols['Phi'][ntau-2] - 2*self.sols['Phi'][ntau-1]) \
+            Omega_dot = (self.Phi[ntau] + self.Phi[ntau-2] - 2*self.Phi[ntau-1]) \
                 / (self.tau_i / self.Ntau)**2
-            Omega = -(self.sols['Phi'][ntau] - self.sols['Phi'][ntau-1]) / (self.tau_i / self.Ntau)
+            Omega = -(self.Phi[ntau] - self.Phi[ntau-1]) / (self.tau_i / self.Ntau)
         else:
-            Omega_dot = (self.sols['Phi'][ntau+1] + self.sols['Phi'][ntau-1] - 2*self.sols['Phi'][ntau]) \
+            Omega_dot = (self.Phi[ntau+1] + self.Phi[ntau-1] - 2*self.Phi[ntau]) \
                 / (self.tau_i / self.Ntau)**2
-            Omega = -(self.sols['Phi'][ntau + 1] - self.sols['Phi'][ntau-1]) / (2.0 * self.tau_i / self.Ntau)
+            Omega = -(self.Phi[ntau + 1] - self.Phi[ntau-1]) / (2.0 * self.tau_i / self.Ntau)
 
-        return - Omega_dot - 3 * self.Hubble * Omega \
-            - 2 * self.Hubble * self.sols['Pi'][ntau] \
-            - (2 * self.Hubble_dt + self.Hubble**2) * self.sols['Phi'][ntau] \
-            + 1.5 * self.Hubble_0**2 * self.Omega_m * self.matter['vw'][ntau]
-               
-            
-        
-        
-        
-    def dOmega_dt(self, ntau):
-        return (-2 / self.to_tau(ntau) + 2*self.metric_f['Hubble'][ntau]) * self.sols['Pi'][ntau] \
-            - (2 * self.metric_f['Hubble_dt'][ntau] -2 * self.metric_f['Hubble'][ntau]**2) \
-            * self.sols['Phi'][ntau] \
-            + 1.5 * self.Hubble_0**2 * self.Omega_m * self.matter['delta'][ntau] \
-            / self.metric_f['a'][ntau] \
-            - self.angle_lap + 3 * self.Hubble_0**2 * self.Omega_m * self.matter['vw'][ntau]
-        
+        return - Omega_dot - 3 * self.Hubble[ntau] * Omega \
+            - 2 * self.Hubble[ntau] * self.Pi[ntau] \
+            - (2 * self.Hubble_dt[ntau] + self.Hubble[ntau]**2) * self.Phi[ntau] \
+            + 1.5 * self.Hubble_0**2 * self.Omega_m * self.vw[ntau]
+                       
     
     # --------------------updating other fields-----------
     def update_other_field(self, ntau):
-        self.Hubble = self.Hubble_0 * self.metric_a['a']\
+        self.Hubble_a = self.Hubble_0 * self.metric_a['a']\
             * npy.sqrt(self.Omega_m * self.metric_a['a']**(-3) + self.Omega_L )
-        self.Hubble_dt = self.Hubble_0**2 * self.metric_a['a']**2 * self.Omega_L \
+        self.Hubble_dt_a = self.Hubble_0**2 * self.metric_a['a']**2 * self.Omega_L \
             - self.Hubble_0**2 * self.Omega_m / (2*self.metric_a['a'])
 
         # self.Hubble = 0
         # self.Hubble_dt = 0
         
-        self.metric_f['Hubble'][ntau] = self.Hubble
-        self.metric_f['Hubble_dt'][ntau] = self.Hubble_dt
+        self.metric_f['Hubble'][ntau] = self.Hubble_a
+        self.metric_f['Hubble_dt'][ntau] = self.Hubble_dt_a
 
         
     #-----------Time advancing----------------------------------
@@ -145,7 +126,6 @@ class Lightcone:
         #----------------first phase-----------------
         for field in self.metric_a:
             self.metric_dt[field] = eval('self.d'+field+'_dt')(ntau)
-
 
         for field in self.metric_a:
             self.metric_a[field] += self.metric_dt[field] * dtau
@@ -170,98 +150,62 @@ class Lightcone:
             self.metric_a[field] = self.metric_f[field][ntau].copy()
 
         self.update_other_field(ntau)
-        
 
-    def time_advance(self):
-        for step in reversed(range(1, self.Ntau + 1)):
-            if(step % 10 == 0): print(step)
-            self.rk2_time_advance_step(step, self.tau_i / self.Ntau)
-        
 
     def est_errors(self):
-        print("dfasoie")
         errs = {'Phi':0.0, 'Pi':0.0, 'Omega':0.0}
-        self.ooo = npy.zeros(self.Ntau+1)
+        rel_err = 0
+        mag = 0
         for field in self.sols:
             for step in reversed(range(self.ntau_f + 1, self.Ntau)):
                 self.est_angle_lap(step)
                 if field == 'Phi':
-                    errs[field] = npy.max([ \
-                    npy.abs( (self.sols[field][step + 1] + self.sols[field][step - 1] \
-                              - 2.0 * self.sols[field][step ]) \
-                             / (self.tau_i / self.Ntau)**2 \
-                             - eval('self.d'+field+'_dt')(step)).max(), errs[field]])
-                elif field == 'Pi':
-                    errs[field] = npy.max([ \
-                                npy.abs( -(self.sols[field][step + 1] - self.sols[field][step - 1]) \
-                                         / (2.0 * self.tau_i / self.Ntau)\
-                                         - eval('self.d'+field+'_dt')(step)).max(), errs[field]])
+                    rhs = eval('self.d'+field+'_dt')(step)
+                    lhs = (self.sols[field][step + 1] + self.sols[field][step - 1] \
+                           - 2.0 * self.sols[field][step ])/ (self.tau_i / self.Ntau)**2
 
+                    errs[field] = npy.max([npy.abs( lhs - rhs).max(), errs[field]])
+                    rel_err += npy.linalg.norm(lhs - rhs)**2
+                    mag += npy.linalg.norm(lhs)**2
+                # elif field == 'Pi':
+                #     errs[field] = npy.max([ \
+                #                 npy.abs( -(self.sols[field][step + 1] - self.sols[field][step - 1]) \
+                #                          / (2.0 * self.tau_i / self.Ntau)\
+                #                          - eval('self.d'+field+'_dt')(step)).max(), errs[field]])
+        rel_err = npy.sqrt(rel_err / mag)
         for field in self.sols:
-            if field != 'Omega':
+            if field == 'Phi':
                 print('Max error for field '+field+' is '+str(errs[field]))
+                print('Relative error of the L2 norm is ' + str(rel_err))
 
     def est_angle_lap(self, ntau):
         alm=self.sh_grid[ntau].expand(lmax_calc=self.lmax)
         alm.coeffs*=self.lm
-        self.angle_lap = alm.expand(grid='GLQ').data / self.to_tau(ntau)**2
-        #self.angle_lap = 0
+        self.angle_lap = alm.expand(grid='GLQ').data / self.tau_list[ntau]**2
+        #Self.angle_lap = 0
             
-                
     def iteration(self):
         nit = self.niter
         while(nit > 0):
-            if(nit % 50 == 0):
+            if(nit % 1 == 0):
                 print('For iteration '+str(nit))
                 self.est_errors()
             nit -= 1
+            #raise ValueError('A very specific bad thing happened.')
             for field in self.sols:
-                #if field == 'Phi': cp = self.sols[field].copy()
-                for step in  reversed(range(self.ntau_f + 1, self.Ntau)):
+                #for step in  reversed(range(self.ntau_f + 1, self.Ntau)):
+                for step in  range(self.Ntau-1, self.ntau_f, -1):
                     self.est_angle_lap(step)
-                    # cp[step] += \
-                    #     (-(self.sols[field][step + 1] - self.sols[field][step - 1]) \
-                    #      / (2.0 * self.tau_i / self.Ntau) \
-                    #      - eval('self.d'+field+'_dt')(step)) * npy.sqrt(self.epsilon)
-
-                    if field == 'Phi': 
-                        self.sols[field][step] = (self.sols[field][step + 1] + self.sols[field][step - 1] \
-                                     - (self.tau_i / self.Ntau)**2 * eval('self.d'+field+'_dt')(step)) / 2      
-                    # if field == 'Phi': 
-                    #     cp[step] += \
-                    #         ((self.sols[field][step + 1] + self.sols[field][step - 1] \
-                    #           - 2.0 * self.sols[field][step ]) \
-                    #          / (self.tau_i / self.Ntau)**2
-                    #          - eval('self.d'+field+'_dt')(step)) * self.epsilon
+                    if field == 'Phi':
+                        self.Phi[step] = (self.Phi[step + 1] + self.Phi[step - 1] \
+                                     - (self.tau_i / self.Ntau)**2 * eval('self.d'+field+'_dt')(step)) / 2
                     elif field == 'Pi':
-                        dt1 = eval('self.d'+field+'_dt')(step + 1)
-                        self.sols[field][step] = self.sols[field][step+1] \
-                            + dt1 * (self.tau_i / self.Ntau)
-                        dt2 = eval('self.d'+field+'_dt')(step)
-                        self.sols[field][step] = self.sols[field][step+1] \
-                            + 0.5 * self.tau_i / self.Ntau * ( dt1 + dt2)
-                        # self.sols[field][step] = (self.sols['Phi'][step + 1] - self.sols['Phi'][step - 1]) \
-                        #             / (2.0 * self.tau_i / self.Ntau)
-                        # cp[step] += \
-                        #     (-(self.sols[field][step + 1] - self.sols[field][step - 1]) \
-                        #      / (2.0 * self.tau_i / self.Ntau) \
-                        #      - eval('self.d'+field+'_dt')(step)) * npy.sqrt(self.epsilon)
-
-                        # cp[step] += \
-                        #     (-(self.sols[field][step + 1] - self.sols[field][step]) \
-                        #      / (2.0 * self.tau_i / self.Ntau) \
-                        #      - eval('self.d'+field+'_dt')(step)) * npy.sqrt(self.epsilon)
-
-                        # self.sols[field][step] += \
-                        #     (-(self.sols[field][step + 1] - self.sols[field][step - 1]) \
-                        #      / (2.0 * self.tau_i / self.Ntau) \
-                        #      - eval('self.d'+field+'_dt')(step)) * npy.sqrt(self.epsilon)
-                        # self.sols[field][step] += \
-                        #     (-(self.sols[field][step + 1] - self.sols[field][step]) \
-                        #      / (self.tau_i / self.Ntau) \
-                        #      - eval('self.d'+field+'_dt')(step)) * npy.sqrt(self.epsilon)
-                #if field == 'Phi': self.sols[field] = cp.copy()
-                        
+                        dt = eval('self.d'+field+'_dt')(step + 1)
+                        self.Pi[step] = self.Pi[step+1] \
+                            + dt * (self.tau_i / self.Ntau)
+                        dt += eval('self.d'+field+'_dt')(step)
+                        self.Pi[step] = self.Pi[step+1] \
+                            + 0.5 * self.tau_i / self.Ntau * dt
         
         
     def init(self):
@@ -292,17 +236,23 @@ class Lightcone:
 
         self.sols['Phi'][self.Ntau] = Phi_i_in.copy()
         self.sols['Pi'][self.Ntau] = Pi_i_in.copy()
-        self.sols['Omega'][self.Ntau] = Omega_i_in.copy()
 
 
         self.sols['Phi'][self.ntau_f] = Phi_f_in.copy()
         self.sols['Pi'][self.ntau_f] = Pi_f_in.copy()
-        self.sols['Omega'][self.ntau_f] = Omega_f_in.copy()
 
         self.sh_grid = \
             npy.array([pysh.SHGrid.from_array(self.sols['Phi'][n], grid = 'GLQ', copy = False) \
                        for n in range(self.Ntau+1)])
+        self.Phi = self.sols['Phi']
+        self.Pi = self.sols['Pi']
+        self.delta = self.matter['delta']
+        self.vw = self.matter['vw']
+        self.a = self.metric_f['a']
+        self.Hubble = self.metric_f['Hubble']
+        self.Hubble_dt = self.metric_f['Hubble_dt']
 
+        self.tau_list = npy.array([self.to_tau(i) for i in range(self.Ntau+1)])
         
         self.metric_a['a'] = 1 / (1 + z_i_in)
         self.metric_f['a'][self.Ntau] = 1 / (1 + z_i_in)
