@@ -66,7 +66,7 @@ class Lightcone:
     # ---------Functions of time derivatives-----------------------
         
     def da_dt(self, ntau):
-        return 0
+        #return 0
         return self.metric_a['a'] * self.Hubble
 
     def dPhi_dt(self, ntau):
@@ -80,7 +80,7 @@ class Lightcone:
             + self.angle_lap \
             - 1.5 * self.Hubble_0**2 * self.Omega_m * self.matter['delta'][ntau] / self.metric_a['a']\
             - 1.5 * self.Hubble_0**2 * self.Omega_m * self.matter['vw'][ntau]
-
+    
     def dOmega_dt(self, ntau):
         #return self.angle_lap
         return (-2 / self.to_tau(ntau) + 2*self.Hubble) * self.metric_a['Pi'] \
@@ -98,13 +98,13 @@ class Lightcone:
         self.Hubble_dt = self.Hubble_0**2 * self.metric_a['a']**2 * self.Omega_L \
             - self.Hubble_0**2 * self.Omega_m / (2*self.metric_a['a'])
 
-        self.Hubble = 0
-        self.Hubble_dt = 0
+        # self.Hubble = 0
+        # self.Hubble_dt = 0
 
         alm=self.sh_grid.expand(lmax_calc=self.lmax)
         alm.coeffs*=self.lm
         self.angle_lap = alm.expand(grid='GLQ').data / self.to_tau(ntau)**2
-        self.angle_lap = 0
+        #self.angle_lap = 0
     
     #-----------Time advancing----------------------------------
     # RK2
@@ -171,7 +171,7 @@ class Lightcone:
     def time_advance(self):
         for step in reversed(range(80, self.Ntau + 1)):
             if(step % 100 == 0): print(step)
-            self.rk2_time_advance_step(step, self.tau_i / self.Ntau)
+            self.rk2_time_advance_step(step, -self.tau_i / self.Ntau)
         
 
     #-------------Initializations------------------------------------
@@ -194,11 +194,11 @@ class Lightcone:
 
         
 
-        # self.metric_a['a'] = 1 / (1 + z_i_in)
-        # self.metric_f['a'][self.Ntau] = 1 / (1 + z_i_in)
+        self.metric_a['a'] = 1 / (1 + z_i_in)
+        self.metric_f['a'][self.Ntau] = 1 / (1 + z_i_in)
 
-        self.metric_a['a'] = 1
-        self.metric_f['a'][self.Ntau] = 1
+        # self.metric_a['a'] = 1
+        # self.metric_f['a'][self.Ntau] = 1
 
         self.Hubble_0 = Params['h'] * 100
         self.Omega_m = Params['Omega_m']

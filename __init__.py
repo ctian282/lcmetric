@@ -4,6 +4,10 @@
 
 import lcmetric.lightcone
 import lcmetric.lightcone_it
+import lcmetric.lightcone_it_mg
+import lcmetric.lightcone_it_lm
+import lcmetric.lightcone_it_mg_lm
+import lcmetric.lightcone_it_lm_hp
 import lcmetric.lightcone_pysh
 import lcmetric.lcmetric.lightcone_it_C
 import lcmetric.utils
