@@ -27,16 +27,8 @@ class Lightcone:
     a = None
     Hubble_dt = None
 
-    angle_lap = None
-
-    nside = None
-
-    theta_list = None
-
-    phi_list = None
-    
     def  __init__(self,  nlat, lmax = None, \
-                  epsilon = 1e-6, grid = 'GLQ', alm_iter = 30, \
+                  epsilon = 1e-6, grid = 'DH', alm_iter = 30, \
                   depth = 3, n_vcycles = 10, npre = 10, npost = 10, verbose = True):
 
         if(grid == 'GLQ' or grid == 'DH'):
@@ -78,7 +70,6 @@ class Lightcone:
     # ---------Functions of time derivatives-----------------------
         
     def da_dt(self, ntau):
-        #return 0
         return self.metric_a['a'] * self.Hubble_a
 
     def dPhi_dt(self, ntau, d):
@@ -87,12 +78,12 @@ class Lightcone:
             * self.Phi_hier[d][ntau] \
             + 1.5 * self.Hubble_0**2 * self.Omega_m / self.a_hier[d][ntau] * self.delta_hier[d][ntau] \
             - self.lm * self.Phi_hier[d][ntau] / self.tau_hier[d][ntau]**2  \
-    + 3 * self.Hubble_0**2 * self.Omega_m * self.vw_hier[d][ntau]
+    + 3 * self.Hubble_0**2 * self.Omega_m / self.a_hier[d][ntau] * self.vw_hier[d][ntau]
 
     def est_f(self, ntau, d):
         return (-2 / self.tau_hier[d][ntau] + 2*self.Hubble_hier[d][ntau]) * self.Pi_hier[d][ntau] \
             + 1.5 * self.Hubble_0**2 * self.Omega_m / self.a_hier[d][ntau] * self.delta_hier[d][ntau] \
-    + 3 * self.Hubble_0**2 * self.Omega_m * self.vw_hier[d][ntau]
+    + 3 * self.Hubble_0**2 * self.Omega_m / self.a_hier[d][ntau] * self.vw_hier[d][ntau]
 
     
     def dPi_dt(self, ntau, d):
@@ -109,7 +100,7 @@ class Lightcone:
         return - Omega_dot - 3 * self.Hubble_hier[d][ntau] * Omega \
             - 2 * self.Hubble_hier[d][ntau] * self.Pi_hier[d][ntau] \
             - (2 * self.Hubble_dt_hier[d][ntau] + self.Hubble_hier[d][ntau]**2) * self.Phi_hier[d][ntau] \
-            + 1.5 * self.Hubble_0**2 * self.Omega_m * self.vw_hier[d][ntau]
+            + 1.5 * self.Hubble_0**2 * self.Omega_m / self.a_hier[d][ntau] * self.vw_hier[d][ntau]
                        
     
     # --------------------updating other fields-----------
@@ -189,12 +180,7 @@ class Lightcone:
             if field == 'Phi':
                 print(indent+'Max error for field '+field+' is '+str(err) + ' at step '+str(max_step))
                 print(indent+'Relative error of the L2 norm is ' + str(rel_err))
-                        
-    # def est_angle_lap(self, ntau, d):
-    #     alm=self.sh_grid_hier[d][ntau].expand(lmax_calc=self.lmax)
-    #     alm.coeffs*=self.lm
-    #     self.angle_lap = alm.expand(grid=self.grid, extend = self.extend).data / self.tau_hier[d][ntau]**2
-            
+                                    
     def relax(self, d, nsteps):
         err_norm = 1e100
         while(nsteps > 0):
@@ -247,7 +233,6 @@ class Lightcone:
     def clear_field(self, data):
         for d in range(self.depth):
             data[d].fill(0) 
-        
             
     def MG(self):
         n_vcycles = self.n_vcycles
@@ -358,7 +343,6 @@ class Lightcone:
         # Initializing finest hiers
         self.Phi_hier = [None] * self.depth
         self.Pi_hier = [None] * self.depth
-        self.SHGrid_hier = [None] * self.depth
         self.delta_hier = [None] * self.depth
         self.vw_hier = [None] * self.depth
         self.a_hier = [None] * self.depth
@@ -368,12 +352,10 @@ class Lightcone:
         self.tau_hier = [None] * self.depth
         self.dtau_hier = [None] * self.depth
         self.h_size = [None] * self.depth
-        self.sh_grid_hier = [None] * self.depth
 
         self.rhs_hier = [None] * self.depth
         self.rl_hier = [None] * self.depth
 
-        
 
         
         self.Phi_hier[0] = self.to_alm(self.sols['Phi'])
@@ -458,10 +440,6 @@ class Lightcone:
             self.tau_hier[d] = npy.array([self.to_tau(i, d) for i in range(self.h_size[d])])
             self.dtau_hier[d] = self.tau_i / self.Ntau * 2**d
 
-
-
-        #self.update_Pi(0)
-        
                 
     #-------------Initializations------------------------------------
     def init_from_slice(self, z_i_in, r_max_in, delta_in, vw_in, Phi_i_in, Pi_i_in, Params, \
