@@ -41,6 +41,9 @@ class Lightcone:
                 self.lmax = int(self.nlat / 2) - 1
             if(grid == 'GLQ'): self.extend = True
             else: self.extend = False
+
+            self.lm = npy.array([[ [-l*(l+1) for m in range(self.lmax+1)] for l in range(self.lmax+1)],
+                                 [ [-l*(l+1) for m in range(self.lmax+1)] for l in range(self.lmax+1)]])
         elif(grid == 'healpy'):
             self.nside = nlat
             self.Npix = 12* self.nside * self.nside
@@ -49,6 +52,9 @@ class Lightcone:
             self.alm_iter = alm_iter
             if(self.lmax == None):
                 self.lmax = self.nside * 2 - 1
+            self.lm = hp.Alm.getlm( \
+                self.lmax, npy.array(range( int(1+self.lmax + 0.5 * self.lmax*(1+self.lmax)) )))
+            self.lm = -self.lm[0] *(self.lm[0] + 1)
         else:
             raise ValueError('Grid type '+str(grid) + ' does not exist!')
         
@@ -63,6 +69,7 @@ class Lightcone:
 
         self.verbose = verbose
 
+        
 
     def to_tau(self, ntau, d = 0):
         return (ntau )* (2**d * self.tau_i ) / ( (self.Ntau) ) + self.ntau_f * self.tau_i / self.Ntau 
@@ -74,7 +81,8 @@ class Lightcone:
 
     def dPhi_dt(self, ntau, d):
         return (-2 / self.tau_hier[d][ntau] + 2*self.Hubble_hier[d][ntau]) * self.Pi_hier[d][ntau] \
-            - (2 * self.Hubble_dt_hier[d][ntau] -2 * self.Hubble_hier[d][ntau]**2) \
+            - (2 * self.Hubble_dt_hier[d][ntau] -2 * self.Hubble_hier[d][ntau]**2
+               - 3 * 1.5 * self.Hubble_0**2 *self.Omega_m / self.a_hier[d][ntau]) \
             * self.Phi_hier[d][ntau] \
             + 1.5 * self.Hubble_0**2 * self.Omega_m / self.a_hier[d][ntau] * self.delta_hier[d][ntau] \
             - self.lm * self.Phi_hier[d][ntau] / self.tau_hier[d][ntau]**2  \
@@ -194,7 +202,9 @@ class Lightcone:
                             ((self.est_f(step, d) + self.rhs_hier[d][step]) \
                              - (self.Phi_hier[d][step + 1] + self.Phi_hier[d][step - 1]) / self.dtau_hier[d]**2 \
                             ) / (-2 / self.dtau_hier[d]**2 + self.lm / self.tau_hier[d][step]**2 \
-                                 + 2.0 * (self.Hubble_dt_hier[d][step] - self.Hubble_hier[d][step]**2)) 
+                                 + 2.0 * \
+                                 (self.Hubble_dt_hier[d][step] - self.Hubble_hier[d][step]**2
+                                  - 1.5**2 * self.Hubble_0**2 *self.Omega_m / self.a_hier[d][step])) 
                           
                     elif field == 'Pi':
                         dt = eval('self.d'+field+'_dt')(step + 1, d)
@@ -273,7 +283,9 @@ class Lightcone:
                     self.update_Pi(d-1)
             self.clear_field(self.rhs_hier)
             self.clear_field(self.rl_hier)
-        
+            
+        self.relax(0, int(self.npre ))
+            
     def init(self):
         #set-up time evolution of a and Hubble and Hubble_dt
         self.update_other_field(self.Ntau-self.ntau_f)
@@ -326,19 +338,28 @@ class Lightcone:
         # else:
         #     tdata[d-1][-1] = data[d][-1]
 
-    def to_alm(self, data):
+    def to_alm(self, data, array_data = True):
         if(self.grid == 'GLQ' or self.grid =='DH' or self.grid == 'DH2'):
-            return npy.array( [pysh.expand.SHExpandDH( \
-                                                       data[n], sampling = 2) \
-                               for n in range(len(data))])
+            if(array_data == True):
+                return npy.array( [pysh.expand.SHExpandDH( \
+                                                           data[n], sampling = 2) \
+                                   for n in range(len(data))])
+            else:
+                return pysh.expand.SHExpandDH(data, sampling = 2) 
+                                   
+
 
         else:
-            return npy.array( [hp.sphtfunc.map2alm( \
-                            data[n], lmax = self.lmax, iter = self.alm_iter) \
-                               for n in range(len(data))])
+            if(array_data == True):
+                return npy.array( [hp.sphtfunc.map2alm( \
+                                                        data[n], lmax = self.lmax, iter = self.alm_iter) \
+                                   for n in range(len(data))])
+            else:
+                return hp.sphtfunc.map2alm( \
+                                     data, lmax = self.lmax, iter = self.alm_iter)
 
         
-    def build_hier(self):
+    def build_hier(self, alm_form = False):
 
         # Initializing finest hiers
         self.Phi_hier = [None] * self.depth
@@ -357,9 +378,14 @@ class Lightcone:
         self.rl_hier = [None] * self.depth
 
 
+        if(alm_form == True):
+            self.Phi_hier[0] = self.sols['Phi']
+            self.Pi_hier[0] = self.sols['Pi']
+        else:
+            self.Phi_hier[0] = self.to_alm(self.sols['Phi'])
+            self.Pi_hier[0] = self.to_alm(self.sols['Pi'])
+
         
-        self.Phi_hier[0] = self.to_alm(self.sols['Phi'])
-        self.Pi_hier[0] = self.to_alm(self.sols['Pi'])
         self.delta_hier[0] = self.to_alm(self.matter['delta'])
         self.vw_hier[0] = self.to_alm(self.matter['vw'])
 
@@ -369,15 +395,10 @@ class Lightcone:
 
 
         if(self.grid == 'GLQ' or self.grid =='DH' or self.grid == 'DH2'):
-            self.lm = npy.array([[ [-l*(l+1) for m in range(self.lmax+1)] for l in range(self.lmax+1)],
-                                 [ [-l*(l+1) for m in range(self.lmax+1)] for l in range(self.lmax+1)]])
             self.rhs_hier[0] = npy.zeros(self.Phi_hier[0].shape)
             self.rl_hier[0] = npy.zeros(self.Phi_hier[0].shape)
 
         else:
-            self.lm = hp.Alm.getlm( \
-                self.lmax, npy.array(range( int(1+self.lmax + 0.5 * self.lmax*(1+self.lmax)) )))
-            self.lm = -self.lm[0] *(self.lm[0] + 1)
             self.rhs_hier[0] = npy.zeros(self.Phi_hier[0].shape, dtype = complex)
             self.rl_hier[0] = npy.zeros(self.Phi_hier[0].shape, dtype = complex)
 
@@ -442,6 +463,98 @@ class Lightcone:
 
                 
     #-------------Initializations------------------------------------
+
+    def Phi_Pi_gen(self, delta, vw, dvw_dt, H, a, r):
+        Pi_zel = -1.5 * H * vw
+
+        PPi_zel = (Pi_zel + vw * H + dvw_dt) * 1.5*H
+        
+        
+        H0 = self.Hubble_0
+        rhs = r**2 * \
+            (1.5 * H0**2 * self.Omega_m / a * delta \
+             - (2 * Pi_zel + r * PPi_zel) / r )
+        self.rhs = self.to_alm(rhs, array_data = False)
+
+        self.coeffs = 2 * r**2 * (1.5 * self.Hubble_0**2 * self.Omega_m / a )
+        
+        self.Phi_zel = self.rhs / (self.coeffs + self.lm)
+
+        self.Pi_zel = self.to_alm(Pi_zel, array_data = False)
+
+        
+        return self.Phi_zel, self.Pi_zel
+
+    def init_from_matter(self, z_i_in, r_max_in, delta, vw, Params, \
+                        z_f_in, r_min_in):
+        self.r_max = r_max_in;
+
+        self.tau_i = r_max_in;
+
+        self.a_f = 1 / (1 + z_f_in)
+
+        self.tau_f = r_min_in
+
+        self.Ntau = delta.shape[0] - 2
+        
+        self.ntau_f = int(npy.round(self.tau_f / (self.tau_i / self.Ntau)))
+
+        for field in self.metric_f:
+            self.metric_f[field] = npy.zeros(self.Ntau - self.ntau_f + 1)
+
+        #descritation index ranging from 0 to Ntau
+        if(self.grid == 'GLQ' or self.grid == 'DH' or self.grid == 'DH2'):    
+            for field in self.sols:
+                self.sols[field] = npy.zeros((self.Ntau - self.ntau_f + 1, 2, self.lmax+1, self.lmax+1))
+        else:
+            for field in self.sols:
+                self.sols[field] = npy.zeros((self.Ntau - self.ntau_f + 1, hp.Alm.getsize(self.lmax)), dtype = complex)
+            
+
+        self.matter['delta'] = delta[self.ntau_f:self.Ntau+1].copy()
+        self.matter['vw'] = vw[self.ntau_f:self.Ntau+1].copy()
+        # Need to substract extra 2 padding grid 
+
+
+        
+        
+        #self.sols['Phi'][-1] = Phi_i_in.copy()
+        #self.sols['Pi'][-1] = Pi_i_in.copy()
+
+
+        #self.sols['Phi'][0] = Phi_f_in.copy()
+        #self.sols['Pi'][0] = Pi_f_in.copy()
+        #self.sols['Pi'][0] = npy.zeros(Pi_i_in.shape) # Do not need Pi_f
+
+        self.metric_a['a'] = 1 / (1 + z_i_in)
+        self.metric_f['a'][-1] = 1 / (1 + z_i_in)
+
+        self.Hubble_0 = Params['h'] * 100
+        self.Omega_m = Params['Omega_m']
+        self.Omega_L = Params['Omega_L']
+
+        if( abs(self.Omega_m + self.Omega_L - 1.0) > 0.05 ):
+            print("Warning! the total energy fraction is deviating from 1!!!")
+
+        self.init()
+
+        for step in  range(self.Ntau - self.ntau_f , -1, -1):
+            self.sols['Phi'][step], self.sols['Pi'][step] = \
+                self.Phi_Pi_gen(delta[step + self.ntau_f], vw[step + self.ntau_f], \
+                                -(vw[step + self.ntau_f + 1] - vw[step + self.ntau_f- 1]) \
+                                /  (2 * self.tau_i/self.Ntau), \
+                                self.metric_f['Hubble'][step], self.metric_f['a'][step], self.to_tau(step))
+            #self.sols['Phi'][step] -= self.sols['Phi'][step].mean()
+
+        
+        self.build_hier(alm_form = True)
+
+        self.update_Pi(0)
+        
+        if(self.grid == 'DH'):
+            self.grid = 'DH2'                
+
+    
     def init_from_slice(self, z_i_in, r_max_in, delta_in, vw_in, Phi_i_in, Pi_i_in, Params, \
                         z_f_in, r_min_in, Phi_f_in):
         self.r_max = r_max_in;
