@@ -15,6 +15,16 @@ def fderv2(ta, dx, dir):
 def flap(ta, dx):
     return fderv2(ta, dx[0], 0) + fderv2(ta, dx[1], 1) + fderv2(ta, dx[2], 2)
 
+def interp_lc(ta, dr, r, offset):
+    rl = npy.floor(r/dr).astype(int)
+    print(rl)
+    if(rl + 1 + offset >= ta.shape[0]):
+        raise ValueError('r is too large!')
+    elif(rl + offset < 0 ):
+        raise ValueError('r is too small!')
+    ans = (1 - npy.abs(r - rl*dr) / dr ) * ta[rl + offset] + (npy.abs(r - rl*dr) / dr ) * ta[rl+1 + offset]
+    return ans
+
 def interp(ta, dx, x_list, grid = 'healpy'):
 
     if(grid == 'healpy'):
@@ -80,7 +90,25 @@ def f_r_derv(ta, dx, origin, r, x_list, grid= 'healpy'):
                 + x_list[:,:,1] * interp(derv2, dx, x_list, grid)  \
                 + x_list[:,:,2] * interp(derv3, dx, x_list, grid)  ) / r
         
-    
+def inverse_derv(field, L, N, dir):
+
+    ks = 2.0*npy.pi*npy.fft.fftfreq(N, L/N)
+    ks[0] = 1
+
+    field_fft = npy.fft.fftn(field)
+
+
+    if(dir == 0):
+        field_fft /= 1.0j*ks[:,None,None]
+    elif(dir == 1):
+        field_fft /= 1.0j*ks[None,:,None]
+    else:
+        field_fft /= 1.0j*ks[None,None,:]
+
+    field_fft[0,0,0] = 0
+
+    return npy.real(npy.fft.ifftn(field_fft))
+
 
 def inverse_Lap(field, L, N):
     k2s = fftFreqs(L, N)**2
