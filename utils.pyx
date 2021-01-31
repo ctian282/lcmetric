@@ -3,6 +3,8 @@ import healpy as hp
 
 cimport cutils as cutils
 cimport numpy as npy
+
+
 # Using geometric unit,
 # when L = 3e5 Mpc, value of H = h *100 
 L_UNIT = 3e5 # Mpc
@@ -18,11 +20,11 @@ def flap(ta, dx):
     return fderv2(ta, dx[0], 0) + fderv2(ta, dx[1], 1) + fderv2(ta, dx[2], 2)
 
 
-cpdef interp(double[:,:,::1] ta, double [:] dx, double[:,::1] x_list):
+cpdef interp(real_t[:,:,::1] ta, real_t [:] dx, real_t[:,::1] x_list):
 
     cdef int ns = x_list.shape[0]
             
-    cdef npy.ndarray[double, ndim=1, mode='c'] val = npy.zeros(ns)
+    cdef npy.ndarray[real_t, ndim=1, mode='c'] val = npy.zeros(ns)
 
     cutils._interp(&ta[0,0,0], &dx[0], ta.shape[0], ta.shape[1], ta.shape[2],\
                    &x_list[0,0], ns, &val[0])

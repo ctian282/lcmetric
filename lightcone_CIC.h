@@ -6,12 +6,12 @@
 #include "healpix_base.h"
 
 
-typedef double real_t;
+typedef float real_t;
 typedef int idx_t;
 
 inline idx_t CHI2CHIBIN(real_t r, real_t dr)
 {
-  return (idx_t) (r / dr);
+  return std::floor ((r) / dr);
 }
 
 inline idx_t IDX(idx_t nr, idx_t pix, idx_t NPIX)
@@ -19,21 +19,17 @@ inline idx_t IDX(idx_t nr, idx_t pix, idx_t NPIX)
   return nr*NPIX + pix;
 }
   
-void CIC_deposit(real_t *particles, real_t *origin, real_t *delta, real_t *vw,
+void CIC_deposit(real_t *particles, real_t *origin, real_t *delta, real_t *vw, real_t *counts,
                  idx_t nparticles, real_t count_density,
-                 real_t max_r, idx_t NR, idx_t NSIDE)
+                 real_t max_r, real_t min_r, idx_t NR, idx_t NSIDE, idx_t vx_is_weight)
 {
   // Healpix instance
   T_Healpix_Base<idx_t> * HP = new T_Healpix_Base<idx_t>
     ( NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE );
 
-  real_t dr = max_r / NR;
+  real_t dr = (max_r - min_r) / NR;
 
   idx_t NPIX = 12*NSIDE*NSIDE;
-
-  auto counts = new real_t[(NR+2)*NPIX];
-  for(int i = 0; i < (NR+2) * NPIX; i++)
-    counts[i] = 0;
 
   
   #pragma omp parallel for
@@ -57,17 +53,22 @@ void CIC_deposit(real_t *particles, real_t *origin, real_t *delta, real_t *vw,
 
     real_t vr = (vx * x + vy * y + vz * z) / r;
 
-    idx_t ic = CHI2CHIBIN(r, dr);
+    if(vx_is_weight > 0)
+    {
+      vr = vx;
+    }
+    
+    idx_t ic = CHI2CHIBIN(r-min_r, dr);
     idx_t icp = ic+1;
 
-    if(icp >= NR + 2) continue;
+    if(icp >= NR + 2 || ic < -1) continue;
     
     real_t chi_min = r - dr/2.0;
     real_t chi_max = r + dr/2.0;
     real_t expected_counts = count_density * 4.0/3.0*M_PI*( std::pow(chi_max,3) - std::pow(chi_min,3) ) / ((real_t) \
  NPIX);
 
-    real_t dc = r / dr - (real_t)ic;
+    real_t dc = (r-min_r) / dr - (real_t)ic;
 
     real_t tc = 1.0 - dc;
 
@@ -77,33 +78,41 @@ void CIC_deposit(real_t *particles, real_t *origin, real_t *delta, real_t *vw,
     HP->get_interpol(ptg, pix, wgt);
 
     //CIC deposit
-    for(int i = 0 ; i < 4; i++)
+    if( ic >= 0)
     {
+      for(int i = 0 ; i < 4; i++)
+      {
 #pragma omp atomic
-      delta[IDX(ic, pix[i], NPIX)] += 1.0/expected_counts*tc*wgt[i];
+        delta[IDX(ic, pix[i], NPIX)] += 1.0/expected_counts*tc*wgt[i];
 #pragma omp atomic
-      delta[IDX(icp, pix[i], NPIX)] += 1.0/expected_counts*dc*wgt[i];
+        delta[IDX(icp, pix[i], NPIX)] += 1.0/expected_counts*dc*wgt[i];
 
 #pragma omp atomic
-      counts[IDX(ic, pix[i], NPIX)] += 1.0/tc*wgt[i];
+        counts[IDX(ic, pix[i], NPIX)] += tc*wgt[i];
 #pragma omp atomic
-      counts[IDX(icp, pix[i], NPIX)] += 1.0/dc*wgt[i];
+        counts[IDX(icp, pix[i], NPIX)] += dc*wgt[i];
 
       
 #pragma omp atomic
-      vw[IDX(ic, pix[i], NPIX)] += vr*tc*wgt[i];
+        vw[IDX(ic, pix[i], NPIX)] += vr*tc*wgt[i];
 #pragma omp atomic
-      vw[IDX(icp, pix[i], NPIX)] += vr*dc*wgt[i];      
-    }      
+        vw[IDX(icp, pix[i], NPIX)] += vr*dc*wgt[i];      
+      }
+    }
+    else
+    {
+      for(int i = 0 ; i < 4; i++)
+      {
+#pragma omp atomic
+        delta[IDX(icp, pix[i], NPIX)] += 1.0/expected_counts*dc*wgt[i];
+
+#pragma omp atomic
+        counts[IDX(icp, pix[i], NPIX)] += dc*wgt[i];
+      
+#pragma omp atomic
+        vw[IDX(icp, pix[i], NPIX)] += vr*dc*wgt[i];      
+      }      
+    }
   }
 
-  #pragma omp parallel for
-  for(int i = 0; i < (NR+2) * NPIX; i++)
-  {
-    if(counts[i] == 0)
-      vw[i] = 0;
-    else
-      vw[i] /= counts[i];
-  }
-  delete[] counts;
 }
