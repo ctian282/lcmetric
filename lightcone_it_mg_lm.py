@@ -72,8 +72,8 @@ class Lightcone:
         
 
     def to_tau(self, ntau, d = 0):
-        return (ntau )* (2**d * self.tau_i ) / ( (self.Ntau) ) + self.ntau_f * self.tau_i / self.Ntau 
-
+        #return (ntau )* (2**d * self.tau_i ) / ( (self.Ntau) ) + self.ntau_f * self.tau_i / self.Ntau 
+        return self.tau_f + ntau / self.Ntau * (self.tau_i - self.tau_f) 
     # ---------Functions of time derivatives-----------------------
         
     def da_dt(self, ntau):
@@ -128,6 +128,9 @@ class Lightcone:
     #-----------Time advancing----------------------------------
     # RK2
     def rk2_time_advance_step(self, ntau, dtau):
+        if(ntau == 0):
+            return
+
         #----------------first phase-----------------
         for field in self.metric_a:
             self.metric_dt[field] = eval('self.d'+field+'_dt')(ntau)
@@ -138,10 +141,6 @@ class Lightcone:
 
         self.update_other_field(ntau-1)
 
-        if(ntau == -self.ntau_f + 1):
-            for field in self.metric_a:
-                self.metric_f[field][0] = self.metric_a[field].copy()
-            return
         
         #------------------second phase--------------
         ntau = ntau - 1
@@ -288,17 +287,17 @@ class Lightcone:
             
     def init(self):
         #set-up time evolution of a and Hubble and Hubble_dt
-        self.update_other_field(self.Ntau-self.ntau_f)
-        for step in reversed(range(1, self.Ntau-self.ntau_f + 1)):
-            self.rk2_time_advance_step(step, self.tau_i / self.Ntau)
+        self.update_other_field(self.Ntau)
+        for step in reversed(range(1, self.Ntau + 1)):
+            self.rk2_time_advance_step(step, (self.tau_i - self.tau_f) / self.Ntau)
 
         #set-up the initial guess
-        for step in  reversed(range(1, self.Ntau-self.ntau_f)):
+        for step in  reversed(range(1, self.Ntau)):
             for field in self.sols:
                 if(field == 'Phi'):
-                    self.sols[field][step] = self.sols[field][self.Ntau-self.ntau_f] \
-                        + (self.Ntau - self.ntau_f - step) / (self.Ntau - self.ntau_f) \
-                        * (self.sols[field][0] - self.sols[field][self.Ntau - self.ntau_f])
+                    self.sols[field][step] = self.sols[field][self.Ntau] \
+                        + (self.Ntau - step) / (self.Ntau) \
+                        * (self.sols[field][0] - self.sols[field][self.Ntau])
 
     # Only restricing boundary data for Pi
     # used by integration
@@ -347,8 +346,6 @@ class Lightcone:
             else:
                 return pysh.expand.SHExpandDH(data, sampling = 2) 
                                    
-
-
         else:
             if(array_data == True):
                 return npy.array( [hp.sphtfunc.map2alm( \
@@ -357,6 +354,18 @@ class Lightcone:
             else:
                 return hp.sphtfunc.map2alm( \
                                      data, lmax = self.lmax, iter = self.alm_iter)
+
+    def to_real(self, data, array_data = True):
+        if(self.grid == 'GLQ' or self.grid =='DH' or self.grid == 'DH2'):
+            raise ValueError('Stop supporting DH grids!')
+        else:
+            if(array_data == True):
+                return npy.array( [hp.sphtfunc.alm2map( \
+                                                        data[n], lmax = self.lmax) \
+                                   for n in range(len(data))])
+            else:
+                return hp.sphtfunc.alm2map( \
+                                     data, lmax = self.lmax)
 
         
     def build_hier(self, alm_form = False):
@@ -405,7 +414,7 @@ class Lightcone:
         
         # Allocating space for hiers
         # and initializing data through hier_restrict
-        self.h_size[0] = self.Ntau - self.ntau_f + 1
+        self.h_size[0] = self.Ntau  + 1
         n = self.h_size[0] #h_size includes both ends
         self.h_size[0] = n
         for d in range(self.depth-1):
@@ -459,7 +468,7 @@ class Lightcone:
 
         for d in range(self.depth):
             self.tau_hier[d] = npy.array([self.to_tau(i, d) for i in range(self.h_size[d])])
-            self.dtau_hier[d] = self.tau_i / self.Ntau * 2**d
+            self.dtau_hier[d] = (self.tau_i - self.tau_f) / self.Ntau * 2**d
 
                 
     #-------------Initializations------------------------------------
@@ -497,22 +506,22 @@ class Lightcone:
 
         self.Ntau = delta.shape[0] - 2
         
-        self.ntau_f = int(npy.round(self.tau_f / (self.tau_i / self.Ntau)))
+        #self.ntau_f = int(npy.round(self.tau_f / (self.tau_i / self.Ntau)))
 
         for field in self.metric_f:
-            self.metric_f[field] = npy.zeros(self.Ntau - self.ntau_f + 1)
+            self.metric_f[field] = npy.zeros(self.Ntau + 1)
 
         #descritation index ranging from 0 to Ntau
         if(self.grid == 'GLQ' or self.grid == 'DH' or self.grid == 'DH2'):    
             for field in self.sols:
-                self.sols[field] = npy.zeros((self.Ntau - self.ntau_f + 1, 2, self.lmax+1, self.lmax+1))
+                self.sols[field] = npy.zeros((self.Ntau + 1, 2, self.lmax+1, self.lmax+1))
         else:
             for field in self.sols:
-                self.sols[field] = npy.zeros((self.Ntau - self.ntau_f + 1, hp.Alm.getsize(self.lmax)), dtype = complex)
+                self.sols[field] = npy.zeros((self.Ntau + 1, hp.Alm.getsize(self.lmax)), dtype = complex)
             
 
-        self.matter['delta'] = delta[self.ntau_f:self.Ntau+1].copy()
-        self.matter['vw'] = vw[self.ntau_f:self.Ntau+1].copy()
+        self.matter['delta'] = delta[0:self.Ntau+1].copy()
+        self.matter['vw'] = vw[0:self.Ntau+1].copy()
         # Need to substract extra 2 padding grid 
 
 
@@ -538,11 +547,11 @@ class Lightcone:
 
         self.init()
 
-        for step in  range(self.Ntau - self.ntau_f , -1, -1):
+        for step in  range(self.Ntau , -1, -1):
             self.sols['Phi'][step], self.sols['Pi'][step] = \
-                self.Phi_Pi_gen(delta[step + self.ntau_f], vw[step + self.ntau_f], \
-                                -(vw[step + self.ntau_f + 1] - vw[step + self.ntau_f- 1]) \
-                                /  (2 * self.tau_i/self.Ntau), \
+                self.Phi_Pi_gen(delta[step ], vw[step ], \
+                                -(vw[step  + 1] - vw[step - 1]) \
+                                /  (2 * (self.tau_i - self.tau_f)/self.Ntau), \
                                 self.metric_f['Hubble'][step], self.metric_f['a'][step], self.to_tau(step))
             #self.sols['Phi'][step] -= self.sols['Phi'][step].mean()
 
@@ -567,22 +576,22 @@ class Lightcone:
 
         self.Ntau = delta_in.shape[0] - 2
         
-        self.ntau_f = int(npy.round(self.tau_f / (self.tau_i / self.Ntau)))
+        #self.ntau_f = int(npy.round(self.tau_f / (self.tau_i / self.Ntau)))
 
         for field in self.metric_f:
-            self.metric_f[field] = npy.zeros(self.Ntau - self.ntau_f + 1)
+            self.metric_f[field] = npy.zeros(self.Ntau + 1)
 
         #descritation index ranging from 0 to Ntau
         if(self.grid == 'GLQ' or self.grid == 'DH' or self.grid == 'DH2'):    
             for field in self.sols:
-                self.sols[field] = npy.zeros((self.Ntau - self.ntau_f + 1, self.nlat, self.nlon))
+                self.sols[field] = npy.zeros((self.Ntau + 1, self.nlat, self.nlon))
         else:
             for field in self.sols:
-                self.sols[field] = npy.zeros((self.Ntau - self.ntau_f + 1, self.Npix))
+                self.sols[field] = npy.zeros((self.Ntau + 1, self.Npix))
             
 
-        self.matter['delta'] = delta_in[self.ntau_f:self.Ntau+1].copy()
-        self.matter['vw'] = vw_in[self.ntau_f:self.Ntau+1].copy()
+        self.matter['delta'] = delta_in[0:self.Ntau+1].copy()
+        self.matter['vw'] = vw_in[0:self.Ntau+1].copy()
         # Need to substract extra 2 padding grid 
 
         
@@ -613,13 +622,34 @@ class Lightcone:
         
         if(self.grid == 'DH'):
             self.grid = 'DH2'                
-        
-
-        
-        
+            
         
     def build_lcmetric(self):
         self.MG()
+        #self.sols['Phi'][1:self.Ntau-1] = self.to_real(self.Phi_hier[0][1:self.Ntau-1])
+        #self.sols['Pi'][1:self.Ntau-1] = self.to_real(self.Pi_hier[0][1:self.Ntau-1])
+
+        
+    #------------------Starting set-up integration to correcction terms-----------#
+
+
+    Da_corrs = {'Da_S':None, 'Da_v':None, 'Da_SW':None, 'DA_ISW':None}
+
+    z_corrs = {'z_S':None, 'z_v':None, 'z_SW':None, 'z_ISW':None}
+
+    def init_corrs(self):
+        for corrs in Da_corrs:
+            Da_corrs[corrs] = npy.zeros(self.Phi_hier[0].shape)
+
+        for corrs in z_corrs:
+            z_corrs[corrs] = npy.zeros(self.Phi_hier[0].shape)
+
+    def dDa_S_dt(self, step):
+        return 0
+            
+    def cal_corrs(self):
+        return 0
+    
 
 
 
