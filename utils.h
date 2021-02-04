@@ -7,6 +7,7 @@
 typedef double real_t;
 typedef int idx_t;
 
+
 #define IDX(i, j, k, nx, ny, nz) ( ( ((i)%(nx) + nx)% nx ) * (ny) * (nz) + ( ( (j)%(ny) + ny)%ny ) * (nz) + ( ((k)%(nz) + nz)%nz ) )
 
 void _interp(real_t *d, real_t *dx, idx_t nx, idx_t ny, idx_t nz, 

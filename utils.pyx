@@ -1,3 +1,7 @@
+#Cython version of utils.py
+#Currently, the only difference is the interperlation function, which is
+#rewritten by c
+
 import numpy as npy
 import healpy as hp
 
