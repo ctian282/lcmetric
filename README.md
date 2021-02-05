@@ -23,4 +23,7 @@ lc.init_from_slice(init_z, init_r, delta, vw, Phi_i, Pi_i,
                        cosmo_paras, final_z, final_r, Phi_f)
 lc.build_lcmetric()
 ```
-See a sample jupyter nb for more detail
+
+The DTFE component is included, however, only 0.1% difference in power spectrum is identified between DTFE interpolated velocity field and CIC velocity field. So currently, a CIC velocity field is recommended. See a sample jupyter nb for more detail.
+
+

@@ -34,24 +34,33 @@ class Lightcone:
         Parameters
         ----------
         nlat : int
-        IS NSIDE when using healpix
+        Is NSIDE when using healpix
+
         lmax: int, optional
         By default is 2*NSIDE-1
+
         epsilon: float, has NOT been integrated to multigrid yet
         Leading filename with path of the cone file
+
         grid: str, optional
         grid type, default is healpy. Currently keep pysh grid support, considering completely
         remove it in the future
+
         alm_iter: int, optional
         Number of iterations when using healpy map2alm function
+
         depth: int, optional
         Multigrid V-cycle depth, usually 4-6
+
         n_vcycles: int, optional
         Number of vcycles
+
         npre: int, optional
         Number of pre-relaxation at each level in the v-cycle
+
         npost: int, optional
         Number of post-relaxation at each level in the v-cycle
+
         verbose: bool, optional
         If output error info for every step, can be expensive!
         Returns
@@ -645,7 +654,6 @@ class Lightcone:
 
         self.Ntau = delta_in.shape[0] - 2
         
-        #self.ntau_f = int(npy.round(self.tau_f / (self.tau_i / self.Ntau)))
 
         for field in self.metric_f:
             self.metric_f[field] = npy.zeros(self.Ntau + 1)
