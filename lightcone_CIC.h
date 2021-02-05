@@ -6,7 +6,7 @@
 #include "healpix_base.h"
 
 
-typedef float real_t;
+typedef double real_t;
 typedef int idx_t;
 
 inline idx_t CHI2CHIBIN(real_t r, real_t dr)

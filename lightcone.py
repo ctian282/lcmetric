@@ -28,9 +28,36 @@ class Lightcone:
     Hubble_dt = None
 
     def  __init__(self,  nlat, lmax = None, \
-                  epsilon = 1e-6, grid = 'DH', alm_iter = 30, \
+                  epsilon = 1e-6, grid = 'healpy', alm_iter = 30, \
                   depth = 3, n_vcycles = 10, npre = 10, npost = 10, verbose = True):
-
+        """Initialize light-cone class
+        Parameters
+        ----------
+        nlat : int
+        IS NSIDE when using healpix
+        lmax: int, optional
+        By default is 2*NSIDE-1
+        epsilon: float, has NOT been integrated to multigrid yet
+        Leading filename with path of the cone file
+        grid: str, optional
+        grid type, default is healpy. Currently keep pysh grid support, considering completely
+        remove it in the future
+        alm_iter: int, optional
+        Number of iterations when using healpy map2alm function
+        depth: int, optional
+        Multigrid V-cycle depth, usually 4-6
+        n_vcycles: int, optional
+        Number of vcycles
+        npre: int, optional
+        Number of pre-relaxation at each level in the v-cycle
+        npost: int, optional
+        Number of post-relaxation at each level in the v-cycle
+        verbose: bool, optional
+        If output error info for every step, can be expensive!
+        Returns
+        -------
+        void
+        """
         if(grid == 'GLQ' or grid == 'DH'):
             self.nlat = nlat
             self.nlon = self.nlat * 2
@@ -72,7 +99,9 @@ class Lightcone:
         
 
     def to_tau(self, ntau, d = 0):
-        #return (ntau )* (2**d * self.tau_i ) / ( (self.Ntau) ) + self.ntau_f * self.tau_i / self.Ntau 
+        """
+        From mesh idx to radius
+        """
         return self.tau_f + ntau / self.Ntau * (self.tau_i - self.tau_f) 
     # ---------Functions of time derivatives-----------------------
         
@@ -89,6 +118,9 @@ class Lightcone:
     + 3 * self.Hubble_0**2 * self.Omega_m / self.a_hier[d][ntau] * self.vw_hier[d][ntau]
 
     def est_f(self, ntau, d):
+        """
+        Estimate rhs for relaxation (removing linear terms on Phi, which is on the left)
+        """
         return (-2 / self.tau_hier[d][ntau] + 2*self.Hubble_hier[d][ntau]) * self.Pi_hier[d][ntau] \
             + 1.5 * self.Hubble_0**2 * self.Omega_m / self.a_hier[d][ntau] * self.delta_hier[d][ntau] \
     + 3 * self.Hubble_0**2 * self.Omega_m / self.a_hier[d][ntau] * self.vw_hier[d][ntau]
@@ -157,6 +189,9 @@ class Lightcone:
 
 
     def est_errors(self, d, indent = ''):
+        """
+        Print error information. It is a little expensive!
+        """
         err = 0
         rel_err = 0
         mag = 0
@@ -189,14 +224,13 @@ class Lightcone:
                 print(indent+'Relative error of the L2 norm is ' + str(rel_err))
                                     
     def relax(self, d, nsteps):
-        err_norm = 1e100
         while(nsteps > 0):
             nsteps -= 1
-            #raise ValueError('A very specific bad thing happened.')
             for field in self.sols:
                 #for step in  reversed(range(self.ntau_f + 1, self.Ntau)):
                 for step in  range(self.h_size[d] - 2, 0, -1):
                     if field == 'Phi':
+                        # Newton relax Phi
                         self.Phi_hier[d][step] = \
                             ((self.est_f(step, d) + self.rhs_hier[d][step]) \
                              - (self.Phi_hier[d][step + 1] + self.Phi_hier[d][step - 1]) / self.dtau_hier[d]**2 \
@@ -206,6 +240,7 @@ class Lightcone:
                                   - 1.5**2 * self.Hubble_0**2 *self.Omega_m / self.a_hier[d][step])) 
                           
                     elif field == 'Pi':
+                        # Time integrate Pi
                         dt = eval('self.d'+field+'_dt')(step + 1, d)
                         self.Pi_hier[d][step] = self.Pi_hier[d][step+1] \
                             + dt * self.dtau_hier[d]
@@ -216,15 +251,16 @@ class Lightcone:
             
     def generate_rl(self, d):
         for step in  range(self.h_size[d] - 2, 0, -1):
-            # L =\
-            #     (self.Phi_hier[d][step + 1] + self.Phi_hier[d][step - 1] \
-            #      - 2.0 * self.Phi_hier[d][step ])/ (self.dtau_hier[d])**2
             self.rl_hier[d][step] = (self.Phi_hier[d][step + 1] + self.Phi_hier[d][step - 1] \
                  - 2.0 * self.Phi_hier[d][step ])/ (self.dtau_hier[d])**2                    \
                  - self.dPhi_dt(step, d)
 
         
     def update_Pi(self, d):
+        """
+        Since Pi has directly dependence on Phi dot, this will 
+        generate a new Pi whenever the value of Phi 
+        """
         for step in  range(self.h_size[d] - 2, 0, -1):
             dt = self.dPi_dt(step + 1, d)
             self.Pi_hier[d][step] = self.Pi_hier[d][step+1] \
@@ -244,6 +280,10 @@ class Lightcone:
             data[d].fill(0) 
             
     def MG(self):
+        """
+        V-cycle multigrid. Starting from relaxing the finest grid. Might be able to 
+        get speed-up when using more complicaed cycles with proper stop critiria 
+        """
         n_vcycles = self.n_vcycles
         while(n_vcycles >0):
             n_vcycles -= 1
@@ -286,6 +326,9 @@ class Lightcone:
         self.relax(0, int(self.npre ))
             
     def init(self):
+        """
+        Time evolving scale factor to get a, H, and dH_dt data at every light-cone grid
+        """
         #set-up time evolution of a and Hubble and Hubble_dt
         self.update_other_field(self.Ntau)
         for step in reversed(range(1, self.Ntau + 1)):
@@ -496,6 +539,10 @@ class Lightcone:
 
     def init_from_matter(self, z_i_in, r_max_in, delta, vw, Params, \
                         z_f_in, r_min_in):
+        """
+        Initialize from delta and vw fields only from Zel' approximation
+        Still under construction
+        """
         self.r_max = r_max_in;
 
         self.tau_i = r_max_in;
@@ -566,6 +613,28 @@ class Lightcone:
     
     def init_from_slice(self, z_i_in, r_max_in, delta_in, vw_in, Phi_i_in, Pi_i_in, Params, \
                         z_f_in, r_min_in, Phi_f_in):
+        """Sample function of setting-up initial data
+        Parameters
+        ----------
+        z_i_in : float
+            initial z
+        r_max_in: float
+            initial radial distance at z
+        delta_in: float, shape(N+2, NPIX) 
+        delta_in: float, shape(N+2, NPIX) 
+        Phi_i_in: float, shape(NPIX)
+        Pi_i_in: float, shape(NPIX)
+        Paras: list
+            Cosmological parameters, needs to include 'h', 'Omega_m' and 'Omega_L' term
+        z_f_in: float
+            Final z
+        r_min_in: float
+            Final radial distance at z_f
+        Phi_f_in: float, shape(NPIX)
+        Returns
+        -------
+        void
+        """
         self.r_max = r_max_in;
 
         self.tau_i = r_max_in;
