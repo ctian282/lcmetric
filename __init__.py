@@ -6,5 +6,6 @@ import lcmetric.lightcone
 import lcmetric.clightcone_CIC
 import lcmetric.utils
 import lcmetric.cutils
+import lcmetric.cgeodesic
 
 

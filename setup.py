@@ -4,12 +4,18 @@ from Cython.Build import cythonize
 setup(
     ext_modules = cythonize([Extension("clightcone_CIC", ["lightcone_CIC.pyx"],
                                        include_dirs=["/usr/include/healpix_cxx/"],
-                                       extra_compile_args=["-O3","-fopenmp"],
+                                       extra_compile_args=["-O3","-fopenmp",  "-std=c++14"],
                                        extra_link_args=["-lhealpix_cxx", "-lcfitsio", "-lz"],
                                        language="c++",
                                        ),
                              Extension("cutils", ["utils.pyx"],
-                                       extra_compile_args=["-O3","-fopenmp"],
+                                       extra_compile_args=["-O3","-fopenmp", "-std=c++14"],
+                                       language="c++",
+                                       ),
+                             Extension("cgeodesic", ["geodesic.pyx"],
+                                       include_dirs=["/usr/include/healpix_cxx/"],
+                                       extra_compile_args=["-O3","-fopenmp", "-std=c++14"],
+                                       extra_link_args=["-lhealpix_cxx", "-lcfitsio", "-lz"],
                                        language="c++",
                                        )])
 
