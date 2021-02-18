@@ -57,6 +57,9 @@ class _Geodesic
   
   GEODESIC_APPLY_TO_FIELDS(RK2_FIELDS_ALL_CREATE);
   GEODESIC_APPLY_TO_COMPLEX_FIELDS(RK2_COMPLEX_FIELDS_ALL_CREATE);
+  //derived fields
+  real_t *z;
+
   
   real_t *Phi, *Pi, *Omega, *a, *dPi_dr;
   real_t *tars;
@@ -70,12 +73,11 @@ class _Geodesic
   
   pointing *ang_list;
   
-  Healpix_Map <real_t> Phi_s, Pi_s, Omega_s,
-    Phi_s_ddr, Phi_s_dtheta, Phi_s_dphi,
-    Phi_s_ddtheta, Phi_s_ddphi, Phi_s_dthetadphi, Phi_s_drdtheta, Phi_s_drdphi,
-    Phi_s_ang_lap, temp_map;
+  Healpix_Map <real_t> Phi_s[2], Pi_s[2], Omega_s[2],
+    Phi_s_ddr[2], Phi_s_dtheta[2], Phi_s_dphi[2],
+    Phi_s_ddtheta[2], Phi_s_ddphi[2], Phi_s_dthetadphi[2], Phi_s_drdtheta[2], Phi_s_drdphi[2],
+    Phi_s_ang_lap[2], temp_map[2];
   Alm< xcomplex< real_t > > temp_lm;
-  
   
   
   
@@ -96,6 +98,7 @@ class _Geodesic
     cout("debug.txt")
   {
     cout<<"HHHHH\n"<<std::endl;
+
 
     return;
   }
@@ -118,23 +121,26 @@ class _Geodesic
     dPi_dr(dPi_dr_in),
     Omega(Omega_in),
     a(a_in),
-    Phi_s(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
-    Pi_s(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
-    Omega_s(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
-    Phi_s_ddr(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
-    Phi_s_dtheta(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
-    Phi_s_dphi(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
-    Phi_s_ddtheta(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
-    Phi_s_ddphi(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
-    Phi_s_dthetadphi(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
-    Phi_s_drdtheta(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
-    Phi_s_drdphi(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
-    Phi_s_ang_lap(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
-    temp_map(NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE ),
     temp_lm(lmax,lmax),
     cout("debug.txt")
   {
-    cout<<"fjljsaf"<<std::endl;
+
+    for(int i = 0; i < 2; i++)
+    {
+      Phi_s[i].SetNside(NSIDE, RING);
+      Pi_s[i].SetNside(NSIDE, RING);
+      Omega_s[i].SetNside(NSIDE, RING);
+      temp_map[i].SetNside(NSIDE, RING);
+      Phi_s_ddr[i].SetNside(NSIDE, RING);
+      Phi_s_dtheta[i].SetNside(NSIDE, RING);
+      Phi_s_dphi[i].SetNside(NSIDE, RING);
+      Phi_s_ddtheta[i].SetNside(NSIDE, RING);
+      Phi_s_ddphi[i].SetNside(NSIDE, RING);
+      Phi_s_dthetadphi[i].SetNside(NSIDE, RING);
+      Phi_s_drdtheta[i].SetNside(NSIDE, RING);
+      Phi_s_drdphi[i].SetNside(NSIDE, RING);
+      Phi_s_ang_lap[i].SetNside(NSIDE, RING);
+    }
 
     // Healpix instance
     hp = new T_Healpix_Base<idx_t>
@@ -162,20 +168,32 @@ class _Geodesic
   {
     GEODESIC_APPLY_TO_FIELDS(RK2_FIELDS_ALL_DEL);
     GEODESIC_APPLY_TO_COMPLEX_FIELDS(RK2_FIELDS_ALL_DEL);
+    delete hp;
+    delete [] ang_list;
+    delete [] tars;
+    delete [] tars_lower_bins;
+    delete [] ang_corrs;
+    delete [] diff_s_ang;
+    delete [] z;
   }
 
   void gen_tars_lower_bins()
   {
     for(int i = 0; i < n_p; i++)
-      tars_lower_bins[i] = (idx_t)( (tars[3*i] - final_r) / dr );
+      tars_lower_bins[i] = (idx_t)( (tars[6*i] - final_r) / dr );
   }
 
   void alloc_par_arrs()
   {
-    tars = new real_t [3*n_p]();
+    tars = new real_t [6*n_p]();
     tars_lower_bins = new idx_t [n_p]();
     ang_corrs = new real_t [2*n_p]();
     diff_s_ang = new real_t [n_p]();
+
+    z = new real_t [n_p]();
+    
+    GEODESIC_APPLY_TO_FIELDS_ARGS(RK2_FIELDS_ALL_INIT, n_p);
+    GEODESIC_APPLY_TO_COMPLEX_FIELDS_ARGS(RK2_COMPLEX_FIELDS_ALL_INIT, n_p);
   }
   
   // Targets are healpix pixels at distance r
@@ -193,19 +211,17 @@ class _Geodesic
     {
       pointing ang = hp->pix2ang(i);
 
-      // real_t x = r * sin(ang.theta) * cos(ang.phi);
-      // real_t y = r * sin(ang.theta) * sin(ang.phi);
-      // real_t z = r * cos(ang.theta);
-      tars[3*i + 0] = r;
-      tars[3*i + 1] = ang.theta;
-      tars[3*i + 2] = ang.phi;
+      tars[6*i + 0] = r;
+      tars[6*i + 1] = ang.theta;
+      tars[6*i + 2] = ang.phi;
+      tars[6*i + 3] = 0;
+      tars[6*i + 4] = 0;
+      tars[6*i + 5] = 0;
     }
 
     gen_tars_lower_bins();
     
-    GEODESIC_APPLY_TO_FIELDS_ARGS(RK2_FIELDS_ALL_INIT, n_p);
-    GEODESIC_APPLY_TO_COMPLEX_FIELDS_ARGS(RK2_COMPLEX_FIELDS_ALL_INIT, n_p);
-    cout<<tars_lower_bins[100]<<" "<<tars[3*10]<<" "<<tars[3*10+1]<<" "<<tars[3*10+2]<<std::endl;
+    //cout<<tars_lower_bins[100]<<" "<<tars[6*10]<<" "<<tars[6*10+1]<<" "<<tars[6*10+2]<<std::endl;
   }
 
 
@@ -213,20 +229,20 @@ class _Geodesic
   // 1). Extract the healpix array on this shell
   // 2). Convert the alm coeffs of Phi field on this shell
   // 3). Calculating derv1 of Phi field by healpix
-  void update_shell_fields(idx_t n)
+  void update_shell_fields(idx_t n, idx_t c)
   {
     for(int i = IDX(n, 0, NPIX); i < IDX(n, 0, NPIX) + NPIX; i++)
     {
-      Phi_s[i - IDX(n, 0, NPIX)] = Phi[i];
-      Pi_s[i - IDX(n, 0, NPIX)] = Pi[i];
-      Omega_s[i - IDX(n, 0, NPIX)] = Omega[i];
-      Phi_s_ddr[i - IDX(n, 0, NPIX)] = dPi_dr[i];
+      Phi_s[c][i - IDX(n, 0, NPIX)] = Phi[i];
+      Pi_s[c][i - IDX(n, 0, NPIX)] = Pi[i];
+      Omega_s[c][i - IDX(n, 0, NPIX)] = Omega[i];
+      Phi_s_ddr[c][i - IDX(n, 0, NPIX)] = dPi_dr[i];
     }
     // Calculating first derivatives
-    map2alm_iter(Phi_s, temp_lm, n_iter);
-    alm2map_der1(temp_lm, temp_map, Phi_s_dtheta, Phi_s_dphi);
+    map2alm_iter(Phi_s[c], temp_lm, n_iter);
+    alm2map_der1(temp_lm, temp_map[c], Phi_s_dtheta[c], Phi_s_dphi[c]);
     for(idx_t i = 0; i < NPIX; i++)
-      Phi_s_dphi[i] *= sin(ang_list[i].theta);
+      Phi_s_dphi[c][i] *= sin(ang_list[i].theta);
 
     // Calculating lap
     for(idx_t l = 0; l <= lmax; l++)
@@ -235,24 +251,23 @@ class _Geodesic
         //temp_lm[i] *= -l_list[i] * (l_list[i]+1);
         temp_lm(l, m) *= -(real_t)l *(l+1);
       }
-    alm2map(temp_lm, Phi_s_ang_lap);
+    alm2map(temp_lm, Phi_s_ang_lap[c]);
 
     // Calculating second and mixing derivatives
-    map2alm_iter(Phi_s_dtheta, temp_lm, n_iter);
-    alm2map_der1(temp_lm, temp_map, Phi_s_ddtheta, Phi_s_dthetadphi);
+    map2alm_iter(Phi_s_dtheta[c], temp_lm, n_iter);
+    alm2map_der1(temp_lm, temp_map[c], Phi_s_ddtheta[c], Phi_s_dthetadphi[c]);
 
-    map2alm_iter(Pi_s, temp_lm, n_iter);
-    alm2map_der1(temp_lm, temp_map, Phi_s_drdtheta, Phi_s_drdphi);
+    map2alm_iter(Pi_s[c], temp_lm, n_iter);
+    alm2map_der1(temp_lm, temp_map[c], Phi_s_drdtheta[c], Phi_s_drdphi[c]);
     for(idx_t i = 0; i < NPIX; i++)
-      Phi_s_drdphi[i] *= sin(ang_list[i].theta);
+      Phi_s_drdphi[c][i] *= sin(ang_list[i].theta);
 
-    
-    
+        
     // Calculating second and mixing derivatives
-    map2alm_iter(Phi_s_dphi, temp_lm, n_iter);
-    alm2map_der1(temp_lm, temp_map, Phi_s_dthetadphi, Phi_s_ddphi);
+    map2alm_iter(Phi_s_dphi[c], temp_lm, n_iter);
+    alm2map_der1(temp_lm, temp_map[c], Phi_s_dthetadphi[c], Phi_s_ddphi[c]);
     for(idx_t i = 0; i < NPIX; i++)
-      Phi_s_ddphi[i] *= sin(ang_list[i].theta);
+      Phi_s_ddphi[c][i] *= sin(ang_list[i].theta);
 
   }
 
@@ -388,8 +403,10 @@ class _Geodesic
   
   /****************************************************/
 
-  void set_photon_values(Photon &p, idx_t n)
+  void set_photon_values(Photon &p, idx_t p_id, idx_t n, idx_t c)
   {
+    p.pid = p_id;
+
     GEODESIC_APPLY_TO_FIELDS(SET_LOCAL_VALUES);
     GEODESIC_APPLY_TO_COMPLEX_FIELDS(SET_LOCAL_VALUES);
 
@@ -397,21 +414,75 @@ class _Geodesic
     p.a = a[n];
     
     p.pt = pointing(p.theta, p.phi);
-    p.Phi = Phi_s.interpolated_value(p.pt);
-    p.dPhi_dr = Pi_s.interpolated_value(p.pt);
-    p.dPhi_dtheta = Phi_s_dtheta.interpolated_value(p.pt);
-    p.dPhi_dphi = Phi_s_dphi.interpolated_value(p.pt);
-    p.Omega = Omega_s.interpolated_value(p.pt);
+    p.Phi = Phi_s[c].interpolated_value(p.pt);
+    p.dPhi_dr = Pi_s[c].interpolated_value(p.pt);
+    p.dPhi_dtheta = Phi_s_dtheta[c].interpolated_value(p.pt);
+    p.dPhi_dphi = Phi_s_dphi[c].interpolated_value(p.pt);
+    p.Omega = Omega_s[c].interpolated_value(p.pt);
+
+    // Ordinary derivatives
+    p.dPhi_ddr = Phi_s_ddr[c].interpolated_value(p.pt);
+    p.dPhi_drdtheta = Phi_s_drdtheta[c].interpolated_value(p.pt);
+    p.dPhi_drdphi = Phi_s_drdphi[c].interpolated_value(p.pt);
+    p.dPhi_ddphi = Phi_s_ddphi[c].interpolated_value(p.pt);
+    p.dPhi_ddtheta = Phi_s_ddtheta[c].interpolated_value(p.pt);
+    p.dPhi_dthetadphi = Phi_s_dthetadphi[c].interpolated_value(p.pt);
+
+    p.Phi_lap = Phi_s_ang_lap[c].interpolated_value(p.pt) / PW2(p.r)
+      + (2 * p.dPhi_dr + p.r * p.dPhi_ddr) / p.r ;
+    // Adding connection terms to from covariant derivatives
+    p.dPhi_ddr += 0;
+    p.dPhi_drdtheta -= p.dPhi_dtheta / p.r;
+    p.dPhi_drdphi -= p.dPhi_dphi / p.r;
+    p.dPhi_ddtheta -= -p.r * p.dPhi_dr;
+    p.dPhi_dthetadphi -= p.dPhi_dphi / tan(p.pt.theta);
+    p.dPhi_ddphi -= -p.r * PW2(sin(p.pt.theta)) * p.dPhi_dr - cos(p.pt.theta) * sin(p.pt.theta) * p.dPhi_dtheta;
+      
+  }
+
+  void set_inter_slice_photon_values(Photon &p, idx_t p_id, idx_t n, idx_t c, real_t weight_l)
+  {
+    p.pid = p_id;
+    GEODESIC_APPLY_TO_FIELDS(SET_LOCAL_VALUES);
+    GEODESIC_APPLY_TO_COMPLEX_FIELDS(SET_LOCAL_VALUES);
+
+    p.r = to_r(n) + weight_l * dr;
+    p.a = (1.0 - weight_l) * a[n] + weight_l * a[n+1];
+    
+    p.pt = pointing(p.theta, p.phi);
+    p.Phi = (1.0 - weight_l) * Phi_s[c].interpolated_value(p.pt)
+      + weight_l * Phi_s[1-c].interpolated_value(p.pt);
+    
+    p.dPhi_dr = (1.0 - weight_l) * Pi_s[c].interpolated_value(p.pt)
+      + weight_l * Pi_s[1-c].interpolated_value(p.pt);
+    
+    p.dPhi_dtheta = (1.0 - weight_l) * Phi_s_dtheta[c].interpolated_value(p.pt)
+      + weight_l * Phi_s_dtheta[1-c].interpolated_value(p.pt);
+    
+    p.dPhi_dphi = (1.0 - weight_l) * Phi_s_dphi[c].interpolated_value(p.pt)
+      + weight_l * Phi_s_dphi[1-c].interpolated_value(p.pt);
+    
+    p.Omega = (1.0 - weight_l) * Omega_s[c].interpolated_value(p.pt)
+      + weight_l * Omega_s[1-c].interpolated_value(p.pt);
     
     // Ordinary derivatives
-    p.dPhi_ddr = Phi_s_ddr.interpolated_value(p.pt);
-    p.dPhi_drdtheta = Phi_s_drdtheta.interpolated_value(p.pt);
-    p.dPhi_drdphi = Phi_s_drdphi.interpolated_value(p.pt);
-    p.dPhi_ddphi = Phi_s_ddphi.interpolated_value(p.pt);
-    p.dPhi_ddtheta = Phi_s_ddtheta.interpolated_value(p.pt);
-    p.dPhi_dthetadphi = Phi_s_dthetadphi.interpolated_value(p.pt);
+    p.dPhi_ddr = (1.0 - weight_l) * Phi_s_ddr[c].interpolated_value(p.pt)
+      + weight_l * Phi_s_ddr[1-c].interpolated_value(p.pt);
+    
+    p.dPhi_drdtheta = (1.0 - weight_l) * Phi_s_drdtheta[c].interpolated_value(p.pt)
+      + weight_l * Phi_s_drdtheta[1-c].interpolated_value(p.pt);
+    p.dPhi_drdphi = (1.0 - weight_l) * Phi_s_drdphi[c].interpolated_value(p.pt)
+      + weight_l * Phi_s_drdphi[1-c].interpolated_value(p.pt);
+    p.dPhi_ddphi = (1.0 - weight_l) * Phi_s_ddphi[c].interpolated_value(p.pt)
+      + weight_l * Phi_s_ddphi[1-c].interpolated_value(p.pt);
+    p.dPhi_ddtheta = (1.0 - weight_l) * Phi_s_ddtheta[c].interpolated_value(p.pt)
+      + weight_l * Phi_s_ddtheta[1-c].interpolated_value(p.pt);
+    p.dPhi_dthetadphi = (1.0 - weight_l) * Phi_s_dthetadphi[c].interpolated_value(p.pt)
+      + weight_l * Phi_s_dthetadphi[1-c].interpolated_value(p.pt);
 
-    p.Phi_lap = Phi_s_ang_lap.interpolated_value(p.pt) / PW2(p.r)
+    p.Phi_lap = ((1.0-weight_l) * Phi_s_ang_lap[c].interpolated_value(p.pt)
+                 + weight_l * Phi_s_ang_lap[1-c].interpolated_value(p.pt))
+      / PW2(p.r)
       + (2 * p.dPhi_dr + p.r * p.dPhi_ddr) / p.r ;
     
     // Adding connection terms to from covariant derivatives
@@ -423,29 +494,31 @@ class _Geodesic
     p.dPhi_ddphi -= -p.r * PW2(sin(p.pt.theta)) * p.dPhi_dr - cos(p.pt.theta) * sin(p.pt.theta) * p.dPhi_dtheta;
       
   }
+
   
   // rk2 advance from n to n+1
-  void time_advance(idx_t n)
+  void time_advance(idx_t n, idx_t c)
   {
     
     if(n == NR || to_r(n) > max_tar_r )
     {
       return;
     }
+
     //update_shell_fields(n);
     for(int i = 0; i < n_p; i++)
     {
       if(n > tars_lower_bins[i]) continue;
       
       Photon p;
-      set_photon_values(p, n);
+      set_photon_values(p, i, n, c);
       real_t dtau;
+
+      // It is the last step?
       if( n < tars_lower_bins[i])
         dtau = -dr;
       else if(n == tars_lower_bins[i])
-      {
-        dtau = -(tars[3*i] - p.r);
-      }
+        dtau = -(tars[6*i] - p.r);
       else
       {
         cout<<"Wired things might have happened!"<<std::endl;
@@ -456,26 +529,39 @@ class _Geodesic
 
     }
 
-    update_shell_fields(n+1);
+    c = 1-c;
+    update_shell_fields(n+1, c);
 
     for(int i = 0; i < n_p; i++)
     {
-      if(n >= tars_lower_bins[i]) continue;
+      if(n > tars_lower_bins[i]) continue;
       Photon p;
-      real_t dtau = -dr;
-      set_photon_values(p, n+1);
+      real_t dtau;
+      if( n < tars_lower_bins[i])
+      {
+        dtau = - dr;
+        set_photon_values(p, i, n+1, c);
+      }
+      else if (n == tars_lower_bins[i])
+      {
+        dtau = -(tars[6*i] - to_r(n));
+        set_inter_slice_photon_values(p, i, n, 1-c, fabs(dtau / dr) );
+      }
+      else
+      {
+        cout<<"Wired things might have happened!"<<std::endl;
+        throw(-1);
+      }
+
       GEODESIC_APPLY_TO_FIELDS(RK2_ADVANCE_ALL_K2);
       GEODESIC_APPLY_TO_COMPLEX_FIELDS(RK2_ADVANCE_ALL_K2);
+
+      if( n == tars_lower_bins[i])
+      {
+        set_inter_slice_photon_values(p, i, n, 1-c, fabs(dtau / dr) );
+        cal_redshift(p);
+      }
     }
-    // cout<<"Done with first ta "<<dDAdt_c[0]<<std::endl;
-    // throw(-1);
-
-    // Photon p;
-    // set_photon_values(p, n+1);
-    
-
-    // cout<<k0_c[0]<<" "<<p.dPhi_dr<<" "<<p.dPhi_dtheta<<" "<<p.dPhi_dphi
-    //     <<" "<<p.Omega<<" "<<dk0_dt(p)<<" "<<k0_a[0]<<std::endl;
     
   }
 
@@ -483,9 +569,9 @@ class _Geodesic
   {
     for(int i = 0; i < n_p; i++)
     {
-      real_t dtheta = theta_a[i] - tars[3*i+1];
-      real_t dphi = phi_a[i] - tars[3*i+2];
-      diff_s_ang[i] = fabs(sin(tars[3*i+1]) * dtheta * dphi);
+      real_t dtheta = theta_a[i] - tars[6*i+1];
+      real_t dphi = phi_a[i] - tars[6*i+2];
+      diff_s_ang[i] = fabs(sin(tars[6*i+1]) * dtheta * dphi);
       if(diff_s_ang[i] <= ang_epsilon)
       {
         tars_lower_bins[i] = -1;
@@ -504,20 +590,19 @@ class _Geodesic
   }
   void init_rays()
   {
-
-    update_shell_fields(0);
-
+    update_shell_fields(0, 0);
     for(int i = 0; i < n_p; i++)
     {
       if(tars_lower_bins[i] < 0) continue;
 
       Photon p;
+
+      theta_a[i] = theta_f[i] = tars[6*i+1] + ang_corrs[2*i];
+      phi_a[i] = phi_f[i] = tars[6*i+2] + ang_corrs[2*i+1];
+
+      set_photon_values(p, i, 0, 0);
       
-      set_photon_values(p, 0);
-      
-      theta_a[i] = theta_f[i] = tars[3*i+1] + ang_corrs[2*i];
-      phi_a[i] = phi_f[i] = tars[3*i+2] + ang_corrs[2*i+1];
-      k0_a[i] = k0_f[i] = a[0] * (1-3*p.Phi);
+      k0_a[i] = k0_f[i] = 1.0 * (1-3*p.Phi);
       DA_a[i] = DA_f[i] = final_r * (1+p.Phi);
       dDAdt_a[i] = dDAdt_f[i] = -(1+2*p.Phi);
       nr_a[i] = nr_f[i] = 1.0;
@@ -525,6 +610,20 @@ class _Geodesic
       nphi_a[i] = nphi_f[i] = 0.0;
     }
   }
+
+  void cal_redshift(Photon &p)
+  {
+    real_t ur = tars[6*p.pid+3];
+    real_t utheta = tars[6*p.pid+4];
+    real_t uphi = tars[6*p.pid+5];
+    real_t q = PW2(ur) + PW2(p.r * utheta) + PW2(p.r * sin(p.theta) * uphi);
+    real_t ni_ui = p.nr * ur + PW2(p.r) * p.ntheta * utheta + PW2(p.r * sin(p.theta)) * p.nphi * uphi;
+
+    z[p.pid] = p.k0 / PW2(p.a) * (1+3*p.Phi) *
+      (sqrt(PW2(p.a) * PW2(p.a) * (1-2*p.Phi) * PW2(q) + PW2(p.a) )
+       - ni_ui * (1+p.Phi)) ;
+  }
+  
   void shoot()
   {
     int cnt = 0;
@@ -532,9 +631,14 @@ class _Geodesic
     while(all_on_tars() == false)
     {
       init_rays();
+
+      idx_t c = 0;
       // Advancing all particles to the shell that has the same radius with target
       for(int i = 0; i < NR; i++)
-        time_advance(i);
+      {
+        time_advance(i, c);
+        c = 1-c;
+      }
 
       cout<<"lower bin is "<<tars_lower_bins[0]<<" NR is "<<NR<<std::endl;
 
@@ -547,8 +651,6 @@ class _Geodesic
         if(diff_s_ang[i] > max_s_ang) max_id = i;
         max_s_ang = std::max(max_s_ang, diff_s_ang[i]);
       }
-      // cout<<"378 "<<diff_s_ang[378]<<" "<<ang_corrs[2*378]<<" "<<ang_corrs[2*378+1]
-      //     <<std::endl;
       cout<<"For iteration "<<cnt<<" , the max different solid angle is "<<max_s_ang
           <<", for ray id "<<max_id<<std::endl;
 
@@ -558,7 +660,7 @@ class _Geodesic
       old_max_s_ang = max_s_ang;
       cnt++;
     }
-    
+
   }
 };
 

@@ -46,6 +46,15 @@
   function(beta1);                              \
   function(beta2);                              
 
+#define GEODESIC_APPLY_TO_TEST_FIELDS(function)      \
+  function(theta);                              
+
+#define GEODESIC_APPLY_TO_DERIVED_FIELDS_ARGS(function, ...)    \
+  function(z, __VA_ARGS__);                         \
+
+#define GEODESIC_APPLY_TO_DERIVED_FIELDS(function)      \
+  function(z);                                          \
+
 
 #define GEODESIC_APPLY_TO_COMPLEX_FIELDS_ARGS(function, ...)    \
   function(sigma, __VA_ARGS__);                         \

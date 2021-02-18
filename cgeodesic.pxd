@@ -27,5 +27,8 @@ cdef extern from "geodesic.h":
         
         idx_t n_p, n_alm_idx;
 
-        real_t * DA_a, *dDAdt_a, *k0_a;
-        #fdsGEODESIC_APPLY_TO_FIELDS(RK2_FIELDS_ALL_CREATE);
+        real_t * DA_a;
+        real_t *dDAdt_a;
+        real_t *k0_a;
+        real_t *z;
+        

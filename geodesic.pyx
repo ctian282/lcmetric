@@ -37,6 +37,17 @@ cdef class Geodesic:
     def shoot(self):
         self.c_geo.shoot()
 
+
+
+
+
+
+
+
+
+
+
+    ###############Functions getting class elements####################    
     def DA(self):
         cdef int n_p = self.c_geo.n_p;
         npy_arr = npy.asarray(<npy.float64_t[:n_p]> self.c_geo.DA_a)
@@ -55,13 +66,13 @@ cdef class Geodesic:
 
         return npy_arr;
 
+    def z(self):
+        cdef int n_p = self.c_geo.n_p;
+        npy_arr = npy.asarray(<npy.float64_t[:n_p]> self.c_geo.z)
+
+        return npy_arr;
+
+        
     
-    
-    cpdef test(self):
-        return 0
-    cpdef check_vars(self, var_name):
-        #print(self.c_geo.n_p)
-        return eval('self.test()')
-        #return eval('self.c_geo.'+var_name,locals())
         
         
