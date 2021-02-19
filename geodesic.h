@@ -8,6 +8,7 @@
 #include <zlib.h>
 #include <complex>
 #include <vector>
+#include <chrono>
 #include "healpix_base.h"
 #include "alm_healpix_tools.h"
 #include "healpix_map.h"
@@ -16,6 +17,7 @@
 #include "geodesic_macros.h"
 
 using namespace std::complex_literals;
+using namespace std::chrono;
 
 
 typedef double real_t;
@@ -48,7 +50,7 @@ class _Geodesic
 {
   public:
 
-  idx_t NR, NSIDE, NPIX, n_iter, lmax;
+  idx_t NR, NSIDE, NPIX, n_iter, lmax, n_max_shooting;;
   real_t init_r, final_r;
   real_t dr, ang_epsilon;
 
@@ -64,7 +66,7 @@ class _Geodesic
   real_t *Phi, *Pi, *Omega, *a, *dPi_dr;
   real_t *tars;
   // initial angular corrections
-  real_t *ang_corrs, *diff_s_ang;
+  real_t *ang_corrs, *d_diff_ang, *d_diff_tar_ang, *diff_s_ang;
   real_t max_tar_r;
   // lower radial bin for tars
   idx_t *tars_lower_bins;
@@ -87,6 +89,9 @@ class _Geodesic
 
   std::ofstream cout;
 
+
+  double hp_time_con, adv_time_con, tot_time_con;
+  
   inline real_t to_r(idx_t nr)
   {
     return final_r + (init_r - final_r) * (real_t)nr / NR;
@@ -97,8 +102,6 @@ class _Geodesic
             real_t * a_in, idx_t NR_in, real_t init_r_in, real_t final_r_in):
     cout("debug.txt")
   {
-    cout<<"HHHHH\n"<<std::endl;
-
 
     return;
   }
@@ -106,11 +109,13 @@ class _Geodesic
   
   _Geodesic(real_t *Phi_in, real_t *Pi_in, real_t *Omega_in, real_t *dPi_dr_in,
             real_t * a_in, idx_t NR_in, real_t init_r_in, real_t final_r_in,
-            idx_t NSIDE_in, idx_t n_iter_in= 30, real_t ang_epsilon_in = 1e-6):
+            idx_t NSIDE_in, idx_t n_iter_in= 30, real_t ang_epsilon_in = 1e-6,
+            idx_t n_max_shooting_in = 10):
     NR(NR_in),
     NSIDE(NSIDE_in),
     NPIX(12*NSIDE*NSIDE),
     n_iter(n_iter_in),
+    n_max_shooting(n_max_shooting_in),
     lmax(2*NSIDE-1),
     init_r(init_r_in),
     final_r(final_r_in),
@@ -122,7 +127,10 @@ class _Geodesic
     Omega(Omega_in),
     a(a_in),
     temp_lm(lmax,lmax),
-    cout("debug.txt")
+    cout("debug.txt"),
+    hp_time_con(0),
+    adv_time_con(0),
+    tot_time_con(0)
   {
 
     for(int i = 0; i < 2; i++)
@@ -173,6 +181,8 @@ class _Geodesic
     delete [] tars;
     delete [] tars_lower_bins;
     delete [] ang_corrs;
+    delete [] d_diff_ang;
+    delete [] d_diff_tar_ang;
     delete [] diff_s_ang;
     delete [] z;
   }
@@ -188,6 +198,8 @@ class _Geodesic
     tars = new real_t [6*n_p]();
     tars_lower_bins = new idx_t [n_p]();
     ang_corrs = new real_t [2*n_p]();
+    d_diff_ang = new real_t [2*n_p]();
+    d_diff_tar_ang = new real_t [2*n_p]();
     diff_s_ang = new real_t [n_p]();
 
     z = new real_t [n_p]();
@@ -231,6 +243,7 @@ class _Geodesic
   // 3). Calculating derv1 of Phi field by healpix
   void update_shell_fields(idx_t n, idx_t c)
   {
+    auto start = system_clock::now();
     for(int i = IDX(n, 0, NPIX); i < IDX(n, 0, NPIX) + NPIX; i++)
     {
       Phi_s[c][i - IDX(n, 0, NPIX)] = Phi[i];
@@ -269,6 +282,9 @@ class _Geodesic
     for(idx_t i = 0; i < NPIX; i++)
       Phi_s_ddphi[c][i] *= sin(ang_list[i].theta);
 
+    auto end   = system_clock::now();
+    auto duration = duration_cast<microseconds>(end - start);
+    hp_time_con += (double)(duration.count()) * microseconds::period::num / microseconds::period::den;
   }
 
   
@@ -410,10 +426,16 @@ class _Geodesic
     GEODESIC_APPLY_TO_FIELDS(SET_LOCAL_VALUES);
     GEODESIC_APPLY_TO_COMPLEX_FIELDS(SET_LOCAL_VALUES);
 
+
     p.r = to_r(n);
     p.a = a[n];
-    
+
+
+    if(p.theta < 0) p.theta = -p.theta;
+    else if(p.theta > M_PI) p.theta = 2*M_PI - p.theta;
     p.pt = pointing(p.theta, p.phi);
+
+
     p.Phi = Phi_s[c].interpolated_value(p.pt);
     p.dPhi_dr = Pi_s[c].interpolated_value(p.pt);
     p.dPhi_dtheta = Phi_s_dtheta[c].interpolated_value(p.pt);
@@ -445,6 +467,9 @@ class _Geodesic
     p.pid = p_id;
     GEODESIC_APPLY_TO_FIELDS(SET_LOCAL_VALUES);
     GEODESIC_APPLY_TO_COMPLEX_FIELDS(SET_LOCAL_VALUES);
+
+    if(p.theta < 0) p.theta = -p.theta;
+    else if(p.theta > M_PI) p.theta = 2*M_PI - p.theta;
 
     p.r = to_r(n) + weight_l * dr;
     p.a = (1.0 - weight_l) * a[n] + weight_l * a[n+1];
@@ -506,6 +531,8 @@ class _Geodesic
     }
 
     //update_shell_fields(n);
+
+    //#pragma omp parallel for
     for(int i = 0; i < n_p; i++)
     {
       if(n > tars_lower_bins[i]) continue;
@@ -527,6 +554,8 @@ class _Geodesic
       GEODESIC_APPLY_TO_FIELDS(RK2_ADVANCE_ALL_K1);
       GEODESIC_APPLY_TO_COMPLEX_FIELDS(RK2_ADVANCE_ALL_K1);
 
+      if(theta_a[i] < 0 || theta_a[i] > M_PI)
+        tars_lower_bins[i] = -2;
     }
 
     c = 1-c;
@@ -537,6 +566,10 @@ class _Geodesic
       if(n > tars_lower_bins[i]) continue;
       Photon p;
       real_t dtau;
+
+      // if(n == 352 && i == 744)
+      //   cout<<"352 2 "<<i<<" "<<tars_lower_bins[i]<<std::endl;
+
       if( n < tars_lower_bins[i])
       {
         dtau = - dr;
@@ -561,14 +594,23 @@ class _Geodesic
         set_inter_slice_photon_values(p, i, n, 1-c, fabs(dtau / dr) );
         cal_redshift(p);
       }
+
+      if(theta_a[i] < 0 || theta_a[i] > M_PI)
+        tars_lower_bins[i] = -2;
     }
-    
+
   }
 
   void gen_corrs()
   {
     for(int i = 0; i < n_p; i++)
     {
+      if(tars_lower_bins[i] < 0)
+      {
+        if(tars_lower_bins[i] == -2)
+          diff_s_ang[i] = 0;
+        continue;
+      }
       real_t dtheta = theta_a[i] - tars[6*i+1];
       real_t dphi = phi_a[i] - tars[6*i+2];
       diff_s_ang[i] = fabs(sin(tars[6*i+1]) * dtheta * dphi);
@@ -577,8 +619,25 @@ class _Geodesic
         tars_lower_bins[i] = -1;
         continue;
       }
-      ang_corrs[2*i] += - dtheta;
-      ang_corrs[2*i+1] += - dphi;
+
+      real_t theta_derv = 1.0;
+      real_t phi_derv = 1.0;
+      
+      if(fabs(d_diff_ang[2*i]) > 1e-15)
+        theta_derv = (dtheta - d_diff_tar_ang[2*i] ) / d_diff_ang[2*i];
+      if(fabs(d_diff_ang[2*i+1]) > 1e-15)
+        phi_derv = (dphi - d_diff_tar_ang[2*i+1] ) / d_diff_ang[2*i+1];
+
+      
+      
+      ang_corrs[2*i] += - dtheta / theta_derv;
+      ang_corrs[2*i+1] += - dphi / phi_derv;
+
+      d_diff_tar_ang[2*i] = dtheta;
+      
+      d_diff_tar_ang[2*i+1] = dphi;
+      d_diff_ang[2*i] = - dtheta / theta_derv;
+      d_diff_ang[2*i+1] = - dphi / phi_derv;
     }
   }
   bool all_on_tars()
@@ -628,19 +687,20 @@ class _Geodesic
   {
     int cnt = 0;
     real_t old_max_s_ang = 1e100;
-    while(all_on_tars() == false)
+    auto start = system_clock::now();
+    while(all_on_tars() == false && cnt < n_max_shooting) 
     {
+
       init_rays();
 
       idx_t c = 0;
       // Advancing all particles to the shell that has the same radius with target
       for(int i = 0; i < NR; i++)
       {
+        //cout<<"Here2 "<<i<<std::endl;
         time_advance(i, c);
         c = 1-c;
       }
-
-      cout<<"lower bin is "<<tars_lower_bins[0]<<" NR is "<<NR<<std::endl;
 
       gen_corrs();
 
@@ -660,8 +720,18 @@ class _Geodesic
       old_max_s_ang = max_s_ang;
       cnt++;
     }
+    if(cnt == n_max_shooting)
+    {
+      cout<<"Shooting trial times are more than maximum! It has been forced stop!"<<std::endl;
+    }
+    auto end   = system_clock::now();
+    auto duration = duration_cast<microseconds>(end - start);
+    tot_time_con += double(duration.count()) * microseconds::period::num / microseconds::period::den;
 
+    cout<<"Total time consumption is "<<tot_time_con<<"s"<<std::endl;
+    cout<<"  Time consumption for healpix is "<<hp_time_con<<"s"<<std::endl;
   }
+
 };
 
 

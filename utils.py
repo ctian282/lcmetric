@@ -9,8 +9,24 @@ c = 3e5 # km/s
 def fderv1(ta, dx, dir):
     return (-0.5 * npy.roll(ta,1, axis = dir) + 0.5 * npy.roll(ta,-1, axis = dir))/(dx)
 
+def np_fderv1(ta, dx, dir):
+    res = (-0.5 * npy.roll(ta,1, axis = dir) + 0.5 * npy.roll(ta,-1, axis = dir))/(dx)
+    res[0] = (npy.take(ta, 1, axis = dir) - npy.take(ta, 0, axis = dir) ) / (dx)
+    res[-1] = (npy.take(ta, -1, axis = dir) - npy.take(ta, -2, axis = dir) ) / (dx)
+    return res
+
+
 def fderv2(ta, dx, dir):
     return ( npy.roll(ta,1, axis = dir) + npy.roll(ta,-1, axis = dir) - 2.0 * ta)/(dx**2)
+
+def np_fderv2(ta, dx, dir):
+    res = ( npy.roll(ta,1, axis = dir) + npy.roll(ta,-1, axis = dir) - 2.0 * ta)/(dx**2)
+    res[0] = (npy.take(ta, 2, axis = dir) + npy.take(ta, 0, axis = dir) \
+              - 2 * npy.take(ta, 1, axis = dir)) / (dx)**2
+    res[-1] = (npy.take(ta, -3, axis = dir) + npy.take(ta, -1, axis = dir) \
+              - 2 * npy.take(ta, -2, axis = dir)) / (dx)**2
+    return res
+    
 
 def flap(ta, dx):
     return fderv2(ta, dx[0], 0) + fderv2(ta, dx[1], 1) + fderv2(ta, dx[2], 2)
