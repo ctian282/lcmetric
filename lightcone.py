@@ -706,6 +706,15 @@ class Lightcone:
         #self.sols['Phi'][1:self.Ntau-1] = self.to_real(self.Phi_hier[0][1:self.Ntau-1])
         #self.sols['Pi'][1:self.Ntau-1] = self.to_real(self.Pi_hier[0][1:self.Ntau-1])
 
+    def dPi_dr(self):
+        Omega = ut.np_fderv1(self.Phi_hier[0], -dtau_hier[0], 0)
+        Omega_dot = ut.np_fderv2(self.Phi_hier[0], -dtau_hier[0], 0)
+        Pi_dot = ut.np_fderv1(self.Pi_hier[0], -dtau_hier[0], 0)
+        dPi_dr = -2 * Pi_dot - Omega_dot - 3 * self.Hubble_hier[0][:,None] * \
+            (Omega + self.Pi_hier[0]) \
+            - (2 * self.Hubble_dt_hier[0][:,None] + self.Hubble_hier[0][:,None]**2) * self.Phi_hier[0]
+        return to_real(dPi_dr, self.lmax, array_data = False)
+        
         
     #------------------Starting set-up integration to correcction terms-----------#
 

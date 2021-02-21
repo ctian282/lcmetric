@@ -21,14 +21,25 @@ cdef extern from "geodesic.h":
   
 
 
-        idx_t NR, NSIDE, NPIX, n_iter, lmax;
+        idx_t NR;
+        idx_t NSIDE;
+        idx_t NPIX;
+        idx_t niter;
+        idx_t lmax
+        idx_t n_p;
+        idx_t n_alm_idx;
+
+        idx_t *tars_lower_bins;
+
+
         real_t init_r, final_r;
         real_t dr, ang_epsilon;
         
-        idx_t n_p, n_alm_idx;
 
-        real_t * DA_a;
+        real_t *DA_a;
         real_t *dDAdt_a;
         real_t *k0_a;
         real_t *z;
-        
+
+        real_t *ang_corrs;
+

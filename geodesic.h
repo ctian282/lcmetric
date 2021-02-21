@@ -4,7 +4,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
-#include <iomanip>            
+#include <iomanip>
 #include <zlib.h>
 #include <complex>
 #include <vector>
@@ -56,13 +56,13 @@ class _Geodesic
 
   idx_t n_p, n_alm_idx;
 
-  
+
   GEODESIC_APPLY_TO_FIELDS(RK2_FIELDS_ALL_CREATE);
   GEODESIC_APPLY_TO_COMPLEX_FIELDS(RK2_COMPLEX_FIELDS_ALL_CREATE);
   //derived fields
   real_t *z;
 
-  
+
   real_t *Phi, *Pi, *Omega, *a, *dPi_dr;
   real_t *tars;
   // initial angular corrections
@@ -72,17 +72,16 @@ class _Geodesic
   idx_t *tars_lower_bins;
 
 
-  
+
   pointing *ang_list;
-  
+
   Healpix_Map <real_t> Phi_s[2], Pi_s[2], Omega_s[2],
     Phi_s_ddr[2], Phi_s_dtheta[2], Phi_s_dphi[2],
     Phi_s_ddtheta[2], Phi_s_ddphi[2], Phi_s_dthetadphi[2], Phi_s_drdtheta[2], Phi_s_drdphi[2],
     Phi_s_ang_lap[2], temp_map[2];
   Alm< xcomplex< real_t > > temp_lm;
-  
-  
-  
+
+
   T_Healpix_Base<idx_t> *hp;
   Alm_Base * lm_base;
   idx_t *l_list, *m_list;
@@ -91,7 +90,6 @@ class _Geodesic
 
 
   double hp_time_con, adv_time_con, tot_time_con;
-  
   inline real_t to_r(idx_t nr)
   {
     return final_r + (init_r - final_r) * (real_t)nr / NR;
@@ -106,7 +104,6 @@ class _Geodesic
     return;
   }
 
-  
   _Geodesic(real_t *Phi_in, real_t *Pi_in, real_t *Omega_in, real_t *dPi_dr_in,
             real_t * a_in, idx_t NR_in, real_t init_r_in, real_t final_r_in,
             idx_t NSIDE_in, idx_t n_iter_in= 30, real_t ang_epsilon_in = 1e-6,
@@ -601,6 +598,15 @@ class _Geodesic
 
   }
 
+  /*
+   * Newton's scheme trying to find root of the function
+   * d_theta_t(d_theta), where d_theta_t is the angle difference
+   * between target and where rays hit, and d_theta is the difference
+   * between your strainght line of sight and your initial shooting direction.
+   * Theirfore, the most naive Newton iteration scheme would be
+   * d_theta(new) = d_theta(old) - d_theta_t(d_theta) / d_theta_t'(d_theta).
+   * d_theta corresponds to array ang_corrs
+   */
   void gen_corrs()
   {
     for(int i = 0; i < n_p; i++)
@@ -622,20 +628,20 @@ class _Geodesic
 
       real_t theta_derv = 1.0;
       real_t phi_derv = 1.0;
-      
+
       if(fabs(d_diff_ang[2*i]) > 1e-15)
         theta_derv = (dtheta - d_diff_tar_ang[2*i] ) / d_diff_ang[2*i];
       if(fabs(d_diff_ang[2*i+1]) > 1e-15)
         phi_derv = (dphi - d_diff_tar_ang[2*i+1] ) / d_diff_ang[2*i+1];
 
-      
+
       
       ang_corrs[2*i] += - dtheta / theta_derv;
       ang_corrs[2*i+1] += - dphi / phi_derv;
 
       d_diff_tar_ang[2*i] = dtheta;
-      
       d_diff_tar_ang[2*i+1] = dphi;
+      
       d_diff_ang[2*i] = - dtheta / theta_derv;
       d_diff_ang[2*i+1] = - dphi / phi_derv;
     }
@@ -660,7 +666,7 @@ class _Geodesic
       phi_a[i] = phi_f[i] = tars[6*i+2] + ang_corrs[2*i+1];
 
       set_photon_values(p, i, 0, 0);
-      
+
       k0_a[i] = k0_f[i] = 1.0 * (1-3*p.Phi);
       DA_a[i] = DA_f[i] = final_r * (1+p.Phi);
       dDAdt_a[i] = dDAdt_f[i] = -(1+2*p.Phi);
@@ -682,13 +688,13 @@ class _Geodesic
       (sqrt(PW2(p.a) * PW2(p.a) * (1-2*p.Phi) * PW2(q) + PW2(p.a) )
        - ni_ui * (1+p.Phi)) ;
   }
-  
+
   void shoot()
   {
     int cnt = 0;
     real_t old_max_s_ang = 1e100;
     auto start = system_clock::now();
-    while(all_on_tars() == false && cnt < n_max_shooting) 
+    while(all_on_tars() == false && cnt < n_max_shooting)
     {
 
       init_rays();
@@ -716,7 +722,7 @@ class _Geodesic
 
       if(max_s_ang > old_max_s_ang)
         cout<<"Warning!!!, the max angular deviation is increasing!\n";
-      
+
       old_max_s_ang = max_s_ang;
       cnt++;
     }
