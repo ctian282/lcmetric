@@ -93,19 +93,19 @@ class Lightcone:
             self.lm = -self.lm[0] *(self.lm[0] + 1)
         else:
             raise ValueError('Grid type '+str(grid) + ' does not exist!')
-        
+
 
         self.depth = depth
         self.n_vcycles = n_vcycles
         self.npre = npre
         self.npost = npost
-        
-        
+
+
         self.epsilon = epsilon
 
         self.verbose = verbose
 
-        
+
 
     def to_tau(self, ntau, d = 0):
         """
@@ -113,7 +113,7 @@ class Lightcone:
         """
         return self.tau_f + ntau / self.Ntau * (self.tau_i - self.tau_f) 
     # ---------Functions of time derivatives-----------------------
-        
+
     def da_dt(self, ntau):
         return self.metric_a['a'] * self.Hubble_a
 
@@ -714,29 +714,6 @@ class Lightcone:
             (Omega + self.Pi_hier[0]) \
             - (2 * self.Hubble_dt_hier[0][:,None] + self.Hubble_hier[0][:,None]**2) * self.Phi_hier[0]
         return to_real(dPi_dr, self.lmax, array_data = False)
-        
-        
-    #------------------Starting set-up integration to correcction terms-----------#
-
-
-    Da_corrs = {'Da_S':None, 'Da_v':None, 'Da_SW':None, 'DA_ISW':None}
-
-    z_corrs = {'z_S':None, 'z_v':None, 'z_SW':None, 'z_ISW':None}
-
-    def init_corrs(self):
-        for corrs in Da_corrs:
-            Da_corrs[corrs] = npy.zeros(self.Phi_hier[0].shape)
-
-        for corrs in z_corrs:
-            z_corrs[corrs] = npy.zeros(self.Phi_hier[0].shape)
-
-    def dDa_S_dt(self, step):
-        return 0
-            
-    def cal_corrs(self):
-        return 0
-    
-
 
 
 

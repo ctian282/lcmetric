@@ -17,6 +17,12 @@ setup(
                                        extra_compile_args=["-O3","-fopenmp", "-std=c++14"],
                                        extra_link_args=["-lhealpix_cxx", "-lcfitsio", "-lz"],
                                        language="c++",
+                                       ),
+                             Extension("clcdensity", ["lcdensity.pyx"],
+                                       include_dirs=["/usr/include/healpix_cxx/"],
+                                       extra_compile_args=["-O3","-fopenmp", "-std=c++14"],
+                                       extra_link_args=["-lhealpix_cxx", "-lcfitsio", "-lz"],
+                                       language="c++",
                                        )])
 
 

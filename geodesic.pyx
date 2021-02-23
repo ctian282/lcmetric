@@ -33,6 +33,7 @@ cdef class Geodesic:
                   real_t [:,::1] Omega, real_t [:,::1] dPi_dr, real_t [::1] a,\
                   idx_t NR, real_t init_r, real_t final_r, idx_t NSIDE, \
                   idx_t n_iter = 30, real_t ang_epsilon = 1e-2, ray_tracing = True,
+                  enable_shear = True,
                   dr_list = None):
 
         self.ray_tracing = ray_tracing
@@ -41,7 +42,7 @@ cdef class Geodesic:
             self.c_geo = \
                 new _Geodesic(&Phi[0,0], &Pi[0,0], \
                               &Omega[0,0], &dPi_dr[0,0], &a[0], \
-                              NR, init_r, final_r, NSIDE, n_iter, ang_epsilon)
+                              NR, init_r, final_r, NSIDE, n_iter, ang_epsilon, enable_shear)
         else:
             self.Phi = npy.asarray(Phi)
             self.init_r = init_r

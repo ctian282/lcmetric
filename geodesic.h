@@ -5,7 +5,6 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
-#include <zlib.h>
 #include <complex>
 #include <vector>
 #include <chrono>
@@ -56,6 +55,7 @@ class _Geodesic
 
   idx_t n_p, n_alm_idx;
 
+  bool enable_shear;
 
   GEODESIC_APPLY_TO_FIELDS(RK2_FIELDS_ALL_CREATE);
   GEODESIC_APPLY_TO_COMPLEX_FIELDS(RK2_COMPLEX_FIELDS_ALL_CREATE);
@@ -100,20 +100,20 @@ class _Geodesic
             real_t * a_in, idx_t NR_in, real_t init_r_in, real_t final_r_in):
     cout("debug.txt")
   {
-
     return;
   }
 
   _Geodesic(real_t *Phi_in, real_t *Pi_in, real_t *Omega_in, real_t *dPi_dr_in,
             real_t * a_in, idx_t NR_in, real_t init_r_in, real_t final_r_in,
             idx_t NSIDE_in, idx_t n_iter_in= 30, real_t ang_epsilon_in = 1e-6,
-            idx_t n_max_shooting_in = 10):
+            idx_t n_max_shooting_in = 10, bool enable_shear_in = false):
     NR(NR_in),
     NSIDE(NSIDE_in),
     NPIX(12*NSIDE*NSIDE),
     n_iter(n_iter_in),
     n_max_shooting(n_max_shooting_in),
     lmax(2*NSIDE-1),
+    enable_shear(enable_shear_in),
     init_r(init_r_in),
     final_r(final_r_in),
     dr( (init_r - final_r)/(real_t)NR ),
@@ -229,8 +229,6 @@ class _Geodesic
     }
 
     gen_tars_lower_bins();
-    
-    //cout<<tars_lower_bins[100]<<" "<<tars[6*10]<<" "<<tars[6*10+1]<<" "<<tars[6*10+2]<<std::endl;
   }
 
 
@@ -307,7 +305,7 @@ class _Geodesic
   {
     return 0.0;
   }
-  
+
   real_t dntheta_dt(Photon &p)
   {
     return 2.0 * p.ntheta * ( 1.0 * p.dPhi_dr+ p.ntheta * p.dPhi_dtheta + p.nphi * p.dPhi_dphi)
@@ -399,18 +397,21 @@ class _Geodesic
          + (p.e1theta * p.e1phi - p.e2theta * p.e2phi + 1i * p.e1theta * p.e2phi + 1i * p.e2theta * p.e1phi )
          * 2.0 * p.dPhi_dthetadphi
          + (p.e1phi * p.e1phi - p.e2phi * p.e2phi + 1i * p.e1phi * p.e2phi + 1i * p.e2phi * p.e1phi )
-         *  p.dPhi_dthetadphi         
+         *  p.dPhi_dthetadphi
       );
   }
 
   cmpx_t depsilon_dt(Photon &p)
   {
     return 0.0;
+    return 2.0 * p.sigma * sqrt(PW2(std::abs(p.epsilon)) + 4.0) / PW2(p.DA);
   }
 
   cmpx_t domega_dt(Photon &p)
   {
     return 0.0;
+    return (1i * std::conj(p.epsilon) * p.sigma - p.epsilon * std::conj(p.sigma))/
+      (PW2(p.DA) * (4 + 2 * sqrt(4 + PW2(std::abs(p.epsilon)) )));
   }
 
   

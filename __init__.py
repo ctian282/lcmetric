@@ -8,4 +8,5 @@ import lcmetric.utils
 import lcmetric.cutils
 import lcmetric.cgeodesic
 
+import lcmetric.clcdensity
 
