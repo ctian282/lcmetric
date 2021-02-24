@@ -530,7 +530,7 @@ class _Geodesic
 
     //update_shell_fields(n);
 
-    //#pragma omp parallel for
+    #pragma omp parallel for
     for(int i = 0; i < n_p; i++)
     {
       if(n > tars_lower_bins[i]) continue;
