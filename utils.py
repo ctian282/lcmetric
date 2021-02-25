@@ -76,7 +76,7 @@ def interp(ta, dx, x_list, grid = 'healpy'):
                         for k in range(2):
                             tempk += ta[(xl[0] + i)%ta.shape[0], (xl[1]+j)%ta.shape[1], (xl[2] + k)%ta.shape[2]] \
                                 *(1- abs((x[2] - (xl[2] + k) * dx[2] ) )/ dx[2])
-                            
+
                         tempj += tempk * (1-abs((x[1] - (xl[1] + j) * dx[1] ) )/ dx[1])
                     val[m,n] += tempj *(1 - abs((x[0] - (xl[0] + i) * dx[0] ) )/ dx[0])
         return val
@@ -105,7 +105,7 @@ def f_r_derv(ta, dx, r, x_list, grid= 'healpy'):
         return (x_list[:,:,0] * interp(derv1, dx, x_list, grid) \
                 + x_list[:,:,1] * interp(derv2, dx, x_list, grid)  \
                 + x_list[:,:,2] * interp(derv3, dx, x_list, grid)  ) / r
-        
+
 def inverse_derv(field, L, N, dir):
 
     ks = 2.0*npy.pi*npy.fft.fftfreq(N, L/N)

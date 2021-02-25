@@ -35,34 +35,41 @@ class Lightcone:
         self.hL_unit = self.L_unit * cosmo_paras['h']
 
         self.met = met.Metric(NSIDE, epsilon = 1e-12, grid = 'healpy', alm_iter = 50, \
-                          depth = 5, n_vcycles = 100, npre = 16, \
-                          lmax = 2*NSIDE - 1, verbose = False)
+                              depth = 5, n_vcycles = 100, npre = 16, npost = 16,\
+                              lmax = 2*NSIDE - 1, verbose = False)
         try:
             if(keyws['from_files'] == True):
-                self.Phi_i = read_pickle(keyws['Phi_i_path'])
-                self.Pi_i = read_pickle(keyws['Pi_i_path'])
-                self.Phi_f = read_pickle(keyws['Phi_f_path'])
-                self.delta = read_picles(keyws['delta_path'])
-                self.vw = read_picles(keyws['vw_path'])
+                self.Phi_i = self.read_pickle(keyws['Phi_i_path'])
+                self.Pi_i = self.read_pickle(keyws['Pi_i_path'])
+                self.Phi_f = self.read_pickle(keyws['Phi_f_path'])
+                self.delta = self.read_pickle(keyws['delta_path'])
+                self.vw = self.read_pickle(keyws['vw_path'])
                 self.init_z = keyws['init_z']
                 self.final_z = keyws['final_z']
 
-                self.init_r = scpy.integrate.quad(self.Hint, 0, init_z)[0]
+                self.init_r = scpy.integrate.quad(self.Hint, 0, self.init_z)[0]
                 # Final comoving distance
-                self.final_r = scpy.integrate.quad(self.Hint, 0, final_z)[0]
+                self.final_r = scpy.integrate.quad(self.Hint, 0, self.final_z)[0]
 
                 self.met.init_from_slice(
                     self.init_z, self.init_r, self.delta,
                     self.vw, self.Phi_i, self.Pi_i, self.cosmo_paras,
-                    self.final_z, self.final_r, self.Phi_f)
+                    self.final_r, self.Phi_f)
         except:
             pass
 
-    def read_pickle(self, path):
+    @staticmethod
+    def read_pickle(path):
         with open(path, 'rb') as f:
-            Phi_i = pickle.load(f)
+            temp = pl.load(f)
         f.close()
-        return Phi_i
+        return temp
+
+    @staticmethod
+    def dump_pickle(path, field):
+        with open(path, 'wb') as f:
+            pl.dump(field)
+        f.close()
 
     # 1/H(z)
     def Hint(self, z):
@@ -143,7 +150,6 @@ class LightconeFromCone(Lightcone):
         self.init_a = 1 / (1+self.init_z)
         self.final_a = 1 / (1+self.final_z)
 
-        print(self.L_snap)
         # Initial comoving distance
         self.init_r = scpy.integrate.quad(self.Hint, 0, init_z)[0]
 
@@ -158,7 +164,6 @@ class LightconeFromCone(Lightcone):
         self.Hi = self.H(self.init_z)
         self.Hf = self.H(self.init_z)
 
-        # print(cone_type)
         print("Starting reading initial snap")
         self.Phi_i, self.Pi_i = self.Phi_Pi_gen(
             self.read_snap_density(Phi_i_path, snap_type, self.init_a),
@@ -170,6 +175,7 @@ class LightconeFromCone(Lightcone):
             self.final_r, self.theta_list, self.phi_list)
 
         print("Finishing reading snaps")
+        print("Starting reading lightcone data")
 
         rf_i0 = None
         rf_i1 = None
