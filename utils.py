@@ -89,7 +89,7 @@ def interp(ta, dx, x_list, grid = 'healpy'):
 # Given a periodic snapshot data, calculate its d/dr
 # r maybe larger than the box size
 # Only linearly interpolate a sphere (r, nise)
-def f_r_derv(ta, dx, origin, r, x_list, grid= 'healpy'):
+def f_r_derv(ta, dx, r, x_list, grid= 'healpy'):
 
 
     # calcuate derivatives on all mesh here 

@@ -72,7 +72,7 @@ cdef dPi_dt_bd(int npix, double complex [::1] Phi,
                         + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
 
 
-class Lightcone:
+class Metric:
 
     # does not really use rho_bar, replaced by H
     matter={'rho_bar':None, 'delta':None, 'vw':None}

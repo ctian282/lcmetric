@@ -3,6 +3,7 @@
 #__all__ = ['lcmetric.lightcone','lcmetric.utils']
 
 import lcmetric.lightcone
+import lcmetric.metric
 import lcmetric.clightcone_CIC
 import lcmetric.utils
 import lcmetric.cutils
