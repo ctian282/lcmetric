@@ -71,6 +71,13 @@ class Lightcone:
             pl.dump(field)
         f.close()
 
+    def dump_all(self, path):
+        self.dump_pickle(path + 'Phi_i.dat', self.Phi_i)
+        self.dump_pickle(path + 'Phi_f.dat', self.Phi_f)
+        self.dump_pickle(path + 'Pi_i.dat', self.Pi_i)
+        self.dump_pickle(path + 'delta.dat', self.delta)
+        self.dump_pickle(path + 'vw_depo.dat', self.vw)
+
     # 1/H(z)
     def Hint(self, z):
         return 1 / (self.cosmo_paras['h']*100
@@ -132,6 +139,58 @@ class Lightcone:
     def build_lcmetric(self):
         self.met.build_lcmetric()
 
+    #@staticmethod
+    def gen_fields_for_rt(self):
+        Omega = ut.np_fderv1(
+            self.met.sols['Phi'], -(self.init_r - self.final_r) / self.NR, 0)
+        Omega_dot = ut.np_fderv2(
+            self.met.sols['Phi'], -(self.init_r - self.final_r) / self.NR, 0)
+        Pi_dot = ut.np_fderv1(
+            self.met.sols['Pi'], -(self.init_r - self.final_r) / self.NR, 0)
+        dPi_dr = -2 * Pi_dot - Omega_dot - 3 * self.met.Hubble_hier[0][:,None] * \
+            (Omega + self.met.sols['Pi']) \
+            - (2 * self.met.metric_f['Hubble_dt'][:,None] \
+               + self.met.metric_f['Hubble'][:,None]**2) * self.met.sols['Phi']
+        return (Omega, Omega_dot, Pi_dot, dPi_dr)
+    #@staticmethod
+    def lensing(self, mode = 'ray_tracing', **kwargs):
+        if(mode == 'ray_tracing'):
+            if(kwargs['init_with_hp_tars'] == True):
+                r = kwargs['r']
+                try:
+                    ang_epsilon = kwargs['ang_epsilon']
+                except:
+                    ang_epsilon = 1e-7
+                #Omega, Omega_dot, Pi_dot, dPi_dr = self.gen_fields_for_rt()
+
+                Omega = ut.np_fderv1(
+                    self.met.sols['Phi'], -(self.init_r - self.final_r) / self.NR, 0)
+                Omega_dot = ut.np_fderv2(
+                    self.met.sols['Phi'], -(self.init_r - self.final_r) / self.NR, 0)
+                Pi_dot = ut.np_fderv1(
+                    self.met.sols['Pi'], -(self.init_r - self.final_r) / self.NR, 0)
+                dPi_dr = -2 * Pi_dot - Omega_dot - 3 * self.met.Hubble_hier[0][:,None] * \
+                    (Omega + self.met.sols['Pi']) \
+                    - (2 * self.met.metric_f['Hubble_dt'][:,None] \
+                       + self.met.metric_f['Hubble'][:,None]**2) * self.met.sols['Phi']
+
+
+                Phi = self.met.sols['Phi']
+                Pi = self.met.sols['Pi']
+                a = self.met.metric_f['a']
+                self.geo = geo.Geodesic(Phi, Pi, Omega, dPi_dr, a, self.NR,
+                                        self.init_r, self.final_r, self.NSIDE,
+                                        ang_epsilon = 1e-7)
+                self.geo.init_with_healpix_tars(r)
+                print('Start shooting!')
+                self.geo.shoot()
+            elif(kwargs['init_with_input_tars'] == True):
+                ValueError('The target type has not been supported yet')
+        elif(mode is 'born_approx'):
+            if(kwargs['']):
+                pass
+        else:
+            raise ValueError('Mode can not be processed!')
 
 class LightconeFromCone(Lightcone):
 

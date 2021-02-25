@@ -4,7 +4,6 @@ import healpy as hp
 #import numba as nb
 
 import lcmetric.utils as ut
-import pyshtools as pysh
 from libcpp cimport bool
 
 cimport cython
@@ -55,7 +54,7 @@ cdef dPi_dt(int npix, double complex [::1] Phi, double complex[::1] Phi_p1, \
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef dPi_dt_bd(int npix, double complex [::1] Phi,
+cdef dPi_dt_upper_bd(int npix, double complex [::1] Phi,
             double complex [::1] Phi_m1,
             double complex [::1] Phi_m2, \
             double complex [::1] Pi, double complex[::1] vw,\
@@ -67,6 +66,24 @@ cdef dPi_dt_bd(int npix, double complex [::1] Phi,
             res[p] = -( (Phi[p] + Phi_m2[p] - 2 * Phi_m1[p]) / dtau**2 \
                        ) - 3 * Hubble * \
                        ( - (Phi[p] - Phi_m1[p]) / (dtau) \
+                        ) - 2 * Hubble * Pi[p] \
+                        - (2 * Hubble_dt + Hubble**2) * Phi[p] \
+                        + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef dPi_dt_lower_bd(int npix, double complex [::1] Phi,
+                     double complex [::1] Phi_p1,
+                     double complex [::1] Phi_p2, \
+                     double complex [::1] Pi, double complex[::1] vw,\
+                     double complex[::1] res, double a, \
+                     double Hubble, double Hubble_0, \
+                     double Hubble_dt, double Omega_m, double dtau):
+        cdef Py_ssize_t p
+        for p in range(npix):
+            res[p] = -( (Phi[p] + Phi_p2[p] - 2 * Phi_p1[p]) / dtau**2 \
+                       ) - 3 * Hubble * \
+                       (  (Phi[p] - Phi_p1[p]) / (dtau) \
                         ) - 2 * Hubble * Pi[p] \
                         - (2 * Hubble_dt + Hubble**2) * Phi[p] \
                         + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
@@ -129,34 +146,17 @@ class Metric:
         -------
         void
         """
-        if(grid == 'GLQ' or grid == 'DH'):
-            self.nlat = nlat
-            self.nlon = self.nlat * 2
-            self.Npix = self.nlat * self.nlon
-            self.lmax = lmax
-            self.grid = grid
-            if(self.lmax == None):
-                self.lmax = int(self.nlat / 2) - 1
-            if(grid == 'GLQ'): self.extend = True
-            else: self.extend = False
-
-            self.lm = npy.array([[ [-l*(l+1) for m in range(self.lmax+1)] for l in range(self.lmax+1)],
-                                 [ [-l*(l+1) for m in range(self.lmax+1)] for l in range(self.lmax+1)]])
-        elif(grid == 'healpy'):
-            self.nside = nlat
-            self.Npix = 12* self.nside * self.nside
-            self.lmax = lmax
-            self.grid = grid
-            self.alm_iter = alm_iter
-            if(self.lmax == None):
-                self.lmax = self.nside * 2 - 1
-            self.lm = hp.Alm.getlm( \
-                self.lmax, npy.array(range( int(1+self.lmax + 0.5 * self.lmax*(1+self.lmax)) )))
-            self.lm = -self.lm[0] *(self.lm[0] + 1)
-            self.Nalms = hp.Alm.getsize(self.lmax)
-        else:
-            raise ValueError('Grid type '+str(grid) + ' does not exist!')
-
+        self.nside = nlat
+        self.Npix = 12* self.nside * self.nside
+        self.lmax = lmax
+        self.grid = grid
+        self.alm_iter = alm_iter
+        if(self.lmax == None):
+            self.lmax = self.nside * 2 - 1
+        self.lm = hp.Alm.getlm(
+            self.lmax, npy.array(range( int(1+self.lmax + 0.5 * self.lmax*(1+self.lmax)) )))
+        self.lm = -self.lm[0] *(self.lm[0] + 1)
+        self.Nalms = hp.Alm.getsize(self.lmax)
 
         self.depth = depth
         self.n_vcycles = n_vcycles
@@ -218,7 +218,7 @@ class Metric:
     def dPi_dt(self, step, d):
         cdef npy.ndarray[double complex, ndim=1, mode='c'] dt = npy.zeros(self.Nalms, dtype = complex)
         if(step == self.h_size[d] - 1):
-            dPi_dt_bd (self.Nalms, \
+            dPi_dt_upper_bd (self.Nalms, \
                        self.Phi_hier[d][step], self.Phi_hier[d][step-1],\
                        self.Phi_hier[d][step-2], self.Pi_hier[d][step], \
                        self.vw_hier[d][step], \
@@ -228,6 +228,17 @@ class Metric:
                        self.Hubble_0, self.Hubble_dt_hier[d][step], self.Omega_m, \
                        self.dtau_hier[d]
                        )
+        elif(step == 0):
+            dPi_dt_lower_bd (self.Nalms, \
+                             self.Phi_hier[d][step], self.Phi_hier[d][step+1],\
+                             self.Phi_hier[d][step+2], self.Pi_hier[d][step], \
+                             self.vw_hier[d][step], \
+                             dt,
+                             self.a_hier[d][step], \
+                             self.Hubble_hier[d][step], \
+                             self.Hubble_0, self.Hubble_dt_hier[d][step], self.Omega_m, \
+                             self.dtau_hier[d]
+                             )
         else:
             dPi_dt (self.Nalms, \
                        self.Phi_hier[d][step], self.Phi_hier[d][step+1],\
@@ -296,21 +307,13 @@ class Metric:
             rhs = self.dPhi_dt(step, d) + self.rhs_hier[d][step]
             lhs = (self.Phi_hier[d][step + 1] + self.Phi_hier[d][step - 1] \
                    - 2.0 * self.Phi_hier[d][step ])/ self.dtau_hier[d]**2 
-            if(self.grid=='DH2' or self.grid == 'DH'):
-                bak = err
-                real_err = npy.abs(pysh.expand.MakeGridDH(rhs - lhs, sampling = 2, extend = False))
-                err = npy.max([real_err.max(), err])
-                rel_err += npy.linalg.norm(real_err)**2
-                mag += npy.linalg.norm(pysh.expand.MakeGridDH(lhs, sampling = 2, extend = False))**2
-                if(err > bak): max_step = step
-            elif(self.grid == 'healpy'):
 
-                bak = err
-                real_err = npy.abs(hp.alm2map(rhs - lhs, self.nside))
-                err = npy.max([real_err.max(), err])
-                rel_err += npy.linalg.norm(real_err)**2
-                mag += npy.linalg.norm(hp.alm2map(lhs, self.nside))**2
-                if(err > bak): max_step = step
+            bak = err
+            real_err = npy.abs(hp.alm2map(rhs - lhs, self.nside))
+            err = npy.max([real_err.max(), err])
+            rel_err += npy.linalg.norm(real_err)**2
+            mag += npy.linalg.norm(hp.alm2map(lhs, self.nside))**2
+            if(err > bak): max_step = step
 
         rel_err = npy.sqrt(rel_err / mag)
         for field in self.sols:
@@ -366,7 +369,7 @@ class Metric:
         Since Pi has directly dependence on Phi dot, this will 
         generate a new Pi whenever the value of Phi 
         """
-        for step in  range(self.h_size[d] - 2, 0, -1):
+        for step in  range(self.h_size[d] - 2, -1, -1):
             dt = self.dPi_dt(step + 1, d)
             self.Pi_hier[d][step] = self.Pi_hier[d][step+1] \
                 + dt * self.dtau_hier[d]
@@ -487,34 +490,23 @@ class Metric:
         tdata[d-1][0] = data[d][0]
 
     def to_alm(self, data, array_data = True):
-        if(self.grid == 'GLQ' or self.grid =='DH' or self.grid == 'DH2'):
-            if(array_data == True):
-                return npy.array( [pysh.expand.SHExpandDH( 
-                    data[n], sampling = 2) \
-                                   for n in range(len(data))])
-            else:
-                return pysh.expand.SHExpandDH(data, sampling = 2) 
 
-        else:
-            if(array_data == True):
-                return npy.array( [hp.sphtfunc.map2alm(
-                    data[n], lmax = self.lmax, iter = self.alm_iter) \
+        if(array_data == True):
+            return npy.array( [hp.sphtfunc.map2alm(
+                data[n], lmax = self.lmax, iter = self.alm_iter) \
                                    for n in range(len(data))])
-            else:
-                return hp.sphtfunc.map2alm( 
-                    data, lmax = self.lmax, iter = self.alm_iter)
+        else:
+            return hp.sphtfunc.map2alm( 
+                data, lmax = self.lmax, iter = self.alm_iter)
 
     def to_real(self, data, array_data = True):
-        if(self.grid == 'GLQ' or self.grid =='DH' or self.grid == 'DH2'):
-            raise ValueError('Stop supporting DH grids!')
+        if(array_data == True):
+            return npy.array( [hp.sphtfunc.alm2map(
+                data[n], nside = self.nside) \
+                               for n in range(len(data))])
         else:
-            if(array_data == True):
-                return npy.array( [hp.sphtfunc.alm2map(
-                    data[n], nside = self.nside) \
-                                   for n in range(len(data))])
-            else:
-                return hp.sphtfunc.alm2map(
-                    data, nside = self.nside)
+            return hp.sphtfunc.alm2map(
+                data, nside = self.nside)
 
 
     def build_hier(self, alm_form = False):
@@ -551,14 +543,8 @@ class Metric:
         self.Hubble_hier[0] = self.metric_f['Hubble']
         self.Hubble_dt_hier[0] = self.metric_f['Hubble_dt']
 
-
-        if(self.grid == 'GLQ' or self.grid =='DH' or self.grid == 'DH2'):
-            self.rhs_hier[0] = npy.zeros(self.Phi_hier[0].shape)
-            self.rl_hier[0] = npy.zeros(self.Phi_hier[0].shape)
-
-        else:
-            self.rhs_hier[0] = npy.zeros(self.Phi_hier[0].shape, dtype = complex)
-            self.rl_hier[0] = npy.zeros(self.Phi_hier[0].shape, dtype = complex)
+        self.rhs_hier[0] = npy.zeros(self.Phi_hier[0].shape, dtype = complex)
+        self.rl_hier[0] = npy.zeros(self.Phi_hier[0].shape, dtype = complex)
 
 
         # Allocating space for hiers
@@ -574,34 +560,19 @@ class Metric:
 
             self.h_size[d+1] = n
 
-            if(self.grid == 'GLQ' or self.grid == 'DH' or self.grid == 'DH2'):
-                self.Phi_hier[d+1] = npy.zeros((n, 2, self.lmax+1, self.lmax+1))
-                self.hier_restrict(self.Phi_hier, d)
+            self.Phi_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
+            self.hier_restrict(self.Phi_hier, d)
 
-                self.Pi_hier[d+1] = npy.zeros((n, 2, self.lmax+1, self.lmax+1))
+            self.Pi_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
 
-                self.delta_hier[d+1] = npy.zeros((n, 2, self.lmax+1, self.lmax+1))
-                self.hier_restrict(self.delta_hier, d)
+            self.delta_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
+            self.hier_restrict(self.delta_hier, d)
 
-                self.vw_hier[d+1] = npy.zeros((n, 2, self.lmax+1, self.lmax+1))
-                self.hier_restrict(self.vw_hier, d)
+            self.vw_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
+            self.hier_restrict(self.vw_hier, d)
 
-                self.rhs_hier[d+1] = npy.zeros((n, 2, self.lmax+1, self.lmax+1))
-                self.rl_hier[d+1] = npy.zeros((n, 2, self.lmax+1, self.lmax+1))
-            else:
-                self.Phi_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
-                self.hier_restrict(self.Phi_hier, d)
-
-                self.Pi_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
-
-                self.delta_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
-                self.hier_restrict(self.delta_hier, d)
-
-                self.vw_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
-                self.hier_restrict(self.vw_hier, d)
-
-                self.rhs_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
-                self.rl_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
+            self.rhs_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
+            self.rl_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
 
 
             self.a_hier[d+1] = npy.zeros(n)
@@ -661,12 +632,8 @@ class Metric:
             self.metric_f[field] = npy.zeros(self.Ntau + 1)
 
         #descritation index ranging from 0 to Ntau
-        if(self.grid == 'GLQ' or self.grid == 'DH' or self.grid == 'DH2'):
-            for field in self.sols:
-                self.sols[field] = npy.zeros((self.Ntau + 1, 2, self.lmax+1, self.lmax+1))
-        else:
-            for field in self.sols:
-                self.sols[field] = npy.zeros((self.Ntau + 1, hp.Alm.getsize(self.lmax)), dtype = complex)
+        for field in self.sols:
+            self.sols[field] = npy.zeros((self.Ntau + 1, hp.Alm.getsize(self.lmax)), dtype = complex)
 
 
         self.matter['delta'] = delta[0:self.Ntau+1].copy()
@@ -746,12 +713,8 @@ class Metric:
             self.metric_f[field] = npy.zeros(self.Ntau + 1)
 
         #descritation index ranging from 0 to Ntau
-        if(self.grid == 'GLQ' or self.grid == 'DH' or self.grid == 'DH2'):    
-            for field in self.sols:
-                self.sols[field] = npy.zeros((self.Ntau + 1, self.nlat, self.nlon))
-        else:
-            for field in self.sols:
-                self.sols[field] = npy.zeros((self.Ntau + 1, self.Npix))
+        for field in self.sols:
+            self.sols[field] = npy.zeros((self.Ntau + 1, self.Npix))
 
 
         self.matter['delta'] = delta_in[0:self.Ntau+1].copy()
@@ -789,17 +752,17 @@ class Metric:
 
     def build_lcmetric(self):
         self.MG()
-        #self.sols['Phi'][1:self.Ntau-1] = self.to_real(self.Phi_hier[0][1:self.Ntau-1])
-        #self.sols['Pi'][1:self.Ntau-1] = self.to_real(self.Pi_hier[0][1:self.Ntau-1])
+        self.sols['Phi'][1:self.Ntau] = self.to_real(self.Phi_hier[0][1:self.Ntau])
+        self.sols['Pi'][0:self.Ntau] = self.to_real(self.Pi_hier[0][0:self.Ntau])
 
-    def dPi_dr(self):
-        Omega = ut.np_fderv1(self.Phi_hier[0], -self.dtau_hier[0], 0)
-        Omega_dot = ut.np_fderv2(self.Phi_hier[0], -self.dtau_hier[0], 0)
-        Pi_dot = ut.np_fderv1(self.Pi_hier[0], -self.dtau_hier[0], 0)
-        dPi_dr = -2 * Pi_dot - Omega_dot - 3 * self.Hubble_hier[0][:,None] * \
-            (Omega + self.Pi_hier[0]) \
-            - (2 * self.Hubble_dt_hier[0][:,None] + self.Hubble_hier[0][:,None]**2) * self.Phi_hier[0]
-        return self.to_real(dPi_dr, self.lmax, array_data = False)
+    # def dPi_dr(self):
+    #     Omega = ut.np_fderv1(self.Phi_hier[0], -self.dtau_hier[0], 0)
+    #     Omega_dot = ut.np_fderv2(self.Phi_hier[0], -self.dtau_hier[0], 0)
+    #     Pi_dot = ut.np_fderv1(self.Pi_hier[0], -self.dtau_hier[0], 0)
+    #     dPi_dr = -2 * Pi_dot - Omega_dot - 3 * self.Hubble_hier[0][:,None] * \
+    #         (Omega + self.Pi_hier[0]) \
+    #         - (2 * self.Hubble_dt_hier[0][:,None] + self.Hubble_hier[0][:,None]**2) * self.Phi_hier[0]
+    #     return self.to_real(dPi_dr, self.lmax, array_data = False)
 
 
 
