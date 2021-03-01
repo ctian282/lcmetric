@@ -27,7 +27,7 @@ def flap(ta, dx):
 cpdef interp(real_t[:,:,::1] ta, real_t [:] dx, real_t[:,::1] x_list):
 
     cdef int ns = x_list.shape[0]
-            
+
     cdef npy.ndarray[real_t, ndim=1, mode='c'] val = npy.zeros(ns)
 
     cutils._interp(&ta[0,0,0], &dx[0], ta.shape[0], ta.shape[1], ta.shape[2],\
@@ -40,7 +40,7 @@ cpdef interp(real_t[:,:,::1] ta, real_t [:] dx, real_t[:,::1] x_list):
 def f_r_derv(ta, dx, origin, r, x_list):
 
 
-    # calcuate derivatives on all mesh here 
+    # calcuate derivatives on all mesh here
     derv1 = fderv1(ta, dx[0], 0)
     derv2 = fderv1(ta, dx[1], 1)
     derv3 = fderv1(ta, dx[2], 2)
@@ -49,16 +49,6 @@ def f_r_derv(ta, dx, origin, r, x_list):
             + (x_list[:,1] - origin[1]) * interp(derv2, dx, x_list)  \
             + (x_list[:,2] - origin[2]) * interp(derv3, dx, x_list)  ) / r
 
-    
-    # if(grid == 'healpy'):
-    #     return (x_list[:,0] * interp(derv1, dx, x_list, grid) \
-    #             + x_list[:,1] * interp(derv2, dx, x_list, grid)  \
-    #             + x_list[:,2] * interp(derv3, dx, x_list, grid)  ) / r
-    # elif(grid == 'pysh'):
-    #     return (x_list[:,:,0] * interp(derv1, dx, x_list, grid) \
-    #             + x_list[:,:,1] * interp(derv2, dx, x_list, grid)  \
-    #             + x_list[:,:,2] * interp(derv3, dx, x_list, grid)  ) / r
-        
 def inverse_derv(field, L, N, dir):
 
     ks = 2.0*npy.pi*npy.fft.fftfreq(N, L/N)

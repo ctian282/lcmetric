@@ -91,7 +91,6 @@ def interp(ta, dx, x_list, grid = 'healpy'):
 # Only linearly interpolate a sphere (r, nise)
 def f_r_derv(ta, dx, r, x_list, grid= 'healpy'):
 
-
     # calcuate derivatives on all mesh here 
     derv1 = fderv1(ta, dx[0], 0)
     derv2 = fderv1(ta, dx[1], 1)
@@ -112,7 +111,6 @@ def inverse_derv(field, L, N, dir):
     ks[0] = 1
 
     field_fft = npy.fft.fftn(field)
-
 
     if(dir == 0):
         field_fft /= 1.0j*ks[:,None,None]

@@ -515,14 +515,13 @@ class _Geodesic
     p.dPhi_ddtheta -= -p.r * p.dPhi_dr;
     p.dPhi_dthetadphi -= p.dPhi_dphi / tan(p.pt.theta);
     p.dPhi_ddphi -= -p.r * PW2(sin(p.pt.theta)) * p.dPhi_dr - cos(p.pt.theta) * sin(p.pt.theta) * p.dPhi_dtheta;
-      
   }
 
-  
+
   // rk2 advance from n to n+1
   void time_advance(idx_t n, idx_t c)
   {
-    
+
     if(n == NR || to_r(n) > max_tar_r )
     {
       return;
@@ -534,7 +533,7 @@ class _Geodesic
     for(int i = 0; i < n_p; i++)
     {
       if(n > tars_lower_bins[i]) continue;
-      
+
       Photon p;
       set_photon_values(p, i, n, c);
       real_t dtau;
@@ -565,8 +564,6 @@ class _Geodesic
       Photon p;
       real_t dtau;
 
-      // if(n == 352 && i == 744)
-      //   cout<<"352 2 "<<i<<" "<<tars_lower_bins[i]<<std::endl;
 
       if( n < tars_lower_bins[i])
       {
@@ -697,14 +694,12 @@ class _Geodesic
     auto start = system_clock::now();
     while(all_on_tars() == false && cnt < n_max_shooting)
     {
-
       init_rays();
 
       idx_t c = 0;
       // Advancing all particles to the shell that has the same radius with target
       for(int i = 0; i < NR; i++)
       {
-        //cout<<"Here2 "<<i<<std::endl;
         time_advance(i, c);
         c = 1-c;
       }

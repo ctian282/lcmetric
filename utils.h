@@ -1,8 +1,8 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
-#include <iomanip>            
-#include <zlib.h>                                                                           
+#include <iomanip>
+#include <zlib.h>
 
 typedef double real_t;
 typedef int idx_t;
@@ -11,7 +11,7 @@ typedef int idx_t;
 
 #define IDX(i, j, k, nx, ny, nz) ( ( ((i)%(nx) + nx)% nx ) * (ny) * (nz) + ( ( (j)%(ny) + ny)%ny ) * (nz) + ( ((k)%(nz) + nz)%nz ) )
 
-void _interp(real_t *d, real_t *dx, idx_t nx, idx_t ny, idx_t nz, 
+void _interp(real_t *d, real_t *dx, idx_t nx, idx_t ny, idx_t nz,
              real_t *x_list, idx_t ns, real_t *res)
 {
   #pragma omp parallel for
@@ -36,6 +36,5 @@ void _interp(real_t *d, real_t *dx, idx_t nx, idx_t ny, idx_t nz,
       }
       res[n] += tempj * (1.0 - std::fabs(x_list[3*n+0] - (real_t)i * dx[0]) / dx[0] );
     }
-          
   }
 }

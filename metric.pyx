@@ -91,20 +91,6 @@ cdef dPi_dt_lower_bd(int npix, double complex [::1] Phi,
 
 class Metric:
 
-    # does not really use rho_bar, replaced by H
-    matter={'rho_bar':None, 'delta':None, 'vw':None}
-
-    # For iteration scheme
-    metric_a={ 'a':None, }
-    metric_dt = {'a':None, }
-    metric_f = {'a':None, 'Hubble':None, 'Hubble_dt':None}
-
-    sols = {'Phi':None, 'Pi':None}
-
-    Hubble_0 = None
-    Hubble = None
-    a = None
-    Hubble_dt = None
 
     def  __init__(self,  nlat, lmax = None, \
                   epsilon = 1e-6, grid = 'healpy', alm_iter = 30, \
@@ -167,6 +153,21 @@ class Metric:
         self.epsilon = epsilon
 
         self.verbose = verbose
+
+        # does not really use rho_bar, replaced by H
+        self.matter={'rho_bar':None, 'delta':None, 'vw':None}
+
+        # For iteration scheme
+        self.metric_a={ 'a':None, }
+        self.metric_dt = {'a':None, }
+        self.metric_f = {'a':None, 'Hubble':None, 'Hubble_dt':None}
+
+        self.sols = {'Phi':None, 'Pi':None}
+
+        self.Hubble_0 = None
+        self.Hubble = None
+        self.a = None
+        self.Hubble_dt = None
 
 
 
@@ -752,17 +753,12 @@ class Metric:
 
     def build_lcmetric(self):
         self.MG()
-        self.sols['Phi'][1:self.Ntau] = self.to_real(self.Phi_hier[0][1:self.Ntau])
-        self.sols['Pi'][0:self.Ntau] = self.to_real(self.Pi_hier[0][0:self.Ntau])
+        # Transfering resules back to real fields
+        # Notice here the initial and final slices are also transfered
+        # to maintain smoothness when caclulating time derivatives.
+        self.sols['Phi'] = self.to_real(self.Phi_hier[0])
+        self.sols['Pi'] = self.to_real(self.Pi_hier[0])
 
-    # def dPi_dr(self):
-    #     Omega = ut.np_fderv1(self.Phi_hier[0], -self.dtau_hier[0], 0)
-    #     Omega_dot = ut.np_fderv2(self.Phi_hier[0], -self.dtau_hier[0], 0)
-    #     Pi_dot = ut.np_fderv1(self.Pi_hier[0], -self.dtau_hier[0], 0)
-    #     dPi_dr = -2 * Pi_dot - Omega_dot - 3 * self.Hubble_hier[0][:,None] * \
-    #         (Omega + self.Pi_hier[0]) \
-    #         - (2 * self.Hubble_dt_hier[0][:,None] + self.Hubble_hier[0][:,None]**2) * self.Phi_hier[0]
-    #     return self.to_real(dPi_dr, self.lmax, array_data = False)
 
 
 
