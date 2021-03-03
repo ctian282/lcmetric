@@ -7,7 +7,7 @@
  */
 
 #define PW2(x) ( (x) * (x))
-
+#define PW3(x) ( (x) * (x) * (x))
 
 
 #define GEODESIC_APPLY_TO_FIELDS_ARGS(function, ...)    \

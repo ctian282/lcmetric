@@ -1,6 +1,6 @@
 import numpy as npy
 import healpy as hp
-
+import scipy as scpy
 # Using geometric unit,
 # when L = 3e5 Mpc, value of H = h *100 
 L_UNIT = 3e5 # Mpc
@@ -141,3 +141,25 @@ def scale(field, pks) :
 def fftFreqs(L, N) :
     ks = 2.0*npy.pi*npy.fft.fftfreq(N, L/N)
     return npy.sqrt( ks[:,None,None]**2 + ks[None,:,None]**2 + ks[None,None,:]**2 )
+
+
+
+# 1/H(z)
+def Hint(z, Hubble, Omega_m, Omega_L):
+    return 1 / (Hubble * npy.sqrt(Omega_m * (1+z)**3
+                                  + Omega_L))
+
+# H(z)
+def H(z, Hubble, Omega_m, Omega_L):
+    return (Hubble / (1+z) * npy.sqrt(Omega_m * (1+z)**3
+                                      + Omega_L))
+
+# integrate 1/H(z) - r, to inversely solve z for given r
+def inverse_Hint(z, r, Hubble, Omega_m, Omega_L):
+    return npy.abs(scpy.integrate.quad(
+        Hint, 0, z, args=(Hubble, Omega_m, Omega_L))[0] - r)
+
+# Convert comoving r to z
+def r2z(r, Hubble, Omega_m, Omega_L):
+    return scpy.optimize.minimize_scalar(
+            inverse_Hint, args=(r, Hubble, Omega_m, Omega_L)).x

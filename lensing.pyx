@@ -109,6 +109,10 @@ class Lensing:
     def set_sources(self, **kwargs):
         if(kwargs['init_with_hp_tars'] == True):
             self.r = kwargs['r']
+
+            if( self.r < self.final_r or self.r > self.init_r):
+                raise ValueError('r is too large or too small!')
+
             if(self.mode is 'ray_tracing'):
                 self.geo.init_with_healpix_tars(self.r)
             elif(self.mode is 'born_approx_snap'):
@@ -118,19 +122,22 @@ class Lensing:
 
     def gen_lc_lensing_conv(self, r):
         resol = 4*npy.pi / (self.NPIX)
-        self.temp = \
+        temp = \
             1.5 * self.met.Hubble_0 ** 2 * self.met.Omega_m * \
             self.L_snap**3 / self.N_snap_part / resol * \
             (self.kappa1 - self.kappa2 / r)
-        self.lower_r_bin = int(npy.floor( (r-self.final_r) / self.NR ))
-        res = self.temp[0:self.lower_r_bin+1,:].sum(axis = 0)
+        lower_r_bin = \
+            int(npy.floor( (r - self.final_r) / ( (self.init_r - self.final_r)/ self.NR) ))
+        res = temp[0:lower_r_bin+1,:].sum(axis = 0)
+        lw = r - lower_r_bin * ((self.init_r - self.final_r)/ self.NR)
+        res += temp[lower_r_bin] * (1 - lw) + temp[lower_r_bin + 1] * lw;
         return res
 
     def calculate(self):
         if(self.mode is 'ray_tracing'):
             print('Start shooting!')
             self.geo.shoot()
-            #return self.geo.DA()
+            return self.geo.DA()
         elif(self.mode is 'born_approx_snap'):
             return self.gen_snaps_lensing_conv(self.r)
         elif(self.mode is 'born_approx_lc'):
