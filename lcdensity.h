@@ -95,30 +95,31 @@ public:
             // if alread outside the lightcone
             if(r > lc_r) continue;
 
-            // real_t next_x = pos[3 * i + 0] + box[0] * mx - obs[0];
-            // real_t next_y = pos[3 * i + 1] + box[1] * my - obs[1];
-            // real_t next_z = pos[3 * i + 2] + box[2] * mz - obs[2];
-            // real_t next_r = sqrt(PW2(next_x) + PW2(next_y) + PW2(next_z));
-
             // if(next_r < lc_r) continue;
             real_t vx = vel[3 * i + 0];
             real_t vy = vel[3 * i + 1];
             real_t vz = vel[3 * i + 2];
-            real_t alpha = a_dot / (2.0 * PW2(a)) + 0.5 *
-              (PW2(x * vx + y * vy + z * vz) / PW3(r) -
-               (vx * vx + vy * vy + vz * vz) / r );
-            real_t beta = -1.0 / a - (x * vx + y * vy + z * vz) / r;
-            real_t gamma = -(tau + dtau) + dtau / a
-              - a_dot * PW2(dtau) / (2 * PW2(a)) - r;
-            // real_t dt1 = (-beta + sqrt(PW2(beta) - 4 * alpha * gamma)) / (2*alpha);
-            // real_t dt2 = (-beta - sqrt(PW2(beta) - 4 * alpha * gamma)) / (2*alpha);
+            // real_t alpha = a_dot / (2.0 * PW2(a)) + 0.5 *
+            //   (PW2(x * vx + y * vy + z * vz) / PW3(r) -
+            //    (vx * vx + vy * vy + vz * vz) / r );
+            real_t alpha = + 0.5 *
+                (PW2(x * vx + y * vy + z * vz) / PW3(r) -
+                 (vx * vx + vy * vy + vz * vz) / r );
+            // real_t beta = -1.0 / a - (x * vx + y * vy + z * vz) / r;
+            // real_t gamma = -(tau + dtau) + dtau / a
+            //   - a_dot * PW2(dtau) / (2 * PW2(a)) - r;
+
+            real_t beta = -1.0 - (x * vx + y * vy + z * vz) / r;
+            real_t gamma = -(tau) - r;
+
             real_t dt1 = -gamma / beta - alpha * PW2(gamma) / PW3(beta);
 
             real_t gamma2 = -tau - r;
 
-            real_t dt2 = -gamma2 / beta - alpha * PW2(gamma2) / PW3(beta);
-            real_t w = (dt1 + dt2) / 2.0 / dtau;
-            real_t dt = dt1 * w + dt2 * (1.0 - w);
+            // real_t dt2 = -gamma2 / beta - alpha * PW2(gamma2) / PW3(beta);
+            // real_t w = (dt1 + dt2) / 2.0 / dtau;
+            // real_t dt = dt1 * w + dt2 * (1.0 - w);
+            real_t dt = dt1;
             if(dt < 0 || dt > dtau) continue;
             // if(dt1 > 0 && dt1 < dtau)
             //   dt = dt1;
