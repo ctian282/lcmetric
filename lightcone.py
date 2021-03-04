@@ -428,7 +428,7 @@ class LightconeFromSnaps(Lightcone):
             self.names.append(
                 os.path.commonprefix(t[i:i + n_threads]) + '[0-9]')
 
-        #self.names = self.names[1::4]
+        self.names = self.names[1::4]
 
         self.n_snaps = len(self.names)
 
@@ -551,10 +551,13 @@ class LightconeFromSnaps(Lightcone):
                 continue
             tau = -scpy.integrate.quad(self.Hint, 0,
                                        self.files[fi].attrs['Redshift'])[0]
-            dtau = -scpy.integrate.quad(
-                self.Hint, 0, self.files[fi - 1].attrs['Redshift'])[0] - tau
+            if(fi > 0):
+                dtau = -scpy.integrate.quad(
+                    self.Hint, 0, self.files[fi - 1].attrs['Redshift'])[0] - tau
+            else:
+                dtau = -tau
 
-            print(str(tau) + ' ' + str(dtau))
+            #print(str(tau) + ' ' + str(dtau))
             state = self.snap_den.proc_snap(fi, tau, dtau)
             if (state is False):
                 raise ValueError('Reading snapshot No. ' + str(fi) +

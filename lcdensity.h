@@ -56,9 +56,11 @@ public:
 
       box = new real_t[3];
       for(int i = 0; i < 3; i++) box[i] = box_in[i];
-      max_move_x = floor(2*init_r / box[0]);
+
+/*       max_move_x = floor(2*init_r / box[0]);
       max_move_y = floor(2*init_r / box[1]);
       max_move_z = floor(2*init_r / box[2]);
+ */
       cout<<max_move_x<<std::endl;
     }
 
@@ -77,13 +79,17 @@ public:
   {
     for(idx_t i = 0; i < n_part; i ++){
 
+      max_move_x = floor(2*lc_r / box[0]);
+      max_move_y = floor(2*lc_r / box[1]);
+      max_move_z = floor(2*lc_r / box[2]);
+
       for(int mx = -max_move_x; mx <= max_move_x; mx++){
         for(int my = - max_move_y; my <= max_move_y; my++){
           for(int mz = -max_move_z; mz <= max_move_z; mz++){
 
-            real_t x = pos[3 * ids[i] + 0] + box[0] * mx - obs[0];
-            real_t y = pos[3 * ids[i] + 1] + box[1] * my - obs[1];
-            real_t z = pos[3 * ids[i] + 2] + box[2] * mz - obs[2];
+            real_t x = pos[3 * i + 0] + box[0] * mx - obs[0];
+            real_t y = pos[3 * i + 1] + box[1] * my - obs[1];
+            real_t z = pos[3 * i + 2] + box[2] * mz - obs[2];
             real_t r = sqrt(PW2(x) + PW2(y) + PW2(z));
 
             // if alread outside the lightcone
