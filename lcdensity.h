@@ -75,6 +75,7 @@ public:
         max_move_y = ceil(2*lc_r / box[1]);
         max_move_z = ceil(2*lc_r / box[2]);
 
+#pragma omp parallel for
         for(idx_t i = 0; i < n_part; i ++){
             for(int mx = -max_move_x; mx <= max_move_x; mx++){
                 for(int my = - max_move_y; my <= max_move_y; my++){
@@ -123,6 +124,8 @@ public:
                         real_t lc_y = y + vy * dt;
                         real_t lc_z = z + vz * dt;
                         std::vector<real_t> vec{lc_x, lc_y, lc_z, vx, vy, vz};
+
+                        #pragma omp critical
                         std::copy(begin(vec), end(vec), std::back_inserter(lc_p));
                     }
                 }

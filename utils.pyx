@@ -10,7 +10,7 @@ cimport numpy as npy
 
 
 # Using geometric unit,
-# when L = 3e5 Mpc, value of H = h *100 
+# when L = 3e5 Mpc, value of H = h *100
 L_UNIT = 3e5 # Mpc
 c = 3e5 # km/s
 
