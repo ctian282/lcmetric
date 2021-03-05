@@ -466,28 +466,29 @@ class LightconeFromSnaps(Lightcone):
         # Final comoving distance
         self.final_r = scpy.integrate.quad(self.Hint, 0, self.final_z)[0]
 
-        if (NR_is_N_snap == True):
+        if (NR_is_N_snap is True):
             self.NR = init_snap_i - final_snap_i + 1
             print(self.NR)
-            self.a=npy.array([1/(1+scpy.optimize.minimize_scalar(
+            self.a = npy.array([1/(1+scpy.optimize.minimize_scalar(
                 self.inverse_Hint, args=(self.to_r(n, self.NR))).x) \
                               for n in range(self.NR+1)])
             self.Phi = npy.zeros((self.NR + 1, self.NPIX))
-            
+
             for fi in range(init_snap_i, final_snap_i - 1, -1):
+
                 ni = self.NR - (init_snap_i - fi)
-                
+
                 self.files[fi]['Position'] *= 1 / self.hL_unit
                 self.files[fi].attrs['BoxSize'] = self.L_snap
                 rf = (self.files[fi].to_mesh(self.N_snap).to_real_field(normalize=False)  \
-                    * ( self.N_snap**3 / self.files[fi]['Position'].shape[0] )  - 1.0 )   
+                    * ( self.N_snap**3 / self.files[fi]['Position'].shape[0] )  - 1.0 )
 
-                rf *= (1.5 * (cosmo_paras['h']*100)**2 * cosmo_paras['Omega_m'] / self.a[ni])  
+                rf *= (1.5 * (cosmo_paras['h']*100)**2 * cosmo_paras['Omega_m'] / self.a[ni])
                 snap = ut.inverse_Lap(rf, self.L_snap, self.N_snap)
                 r = scpy.integrate.quad(self.Hint, 0,
                                        self.files[fi].attrs['Redshift'])[0]
                 print(str(ni) + ' ' + str(r) + ' ' + str(self.a[ni]) )
-                self.Phi[ni] = ut.interp(snap, rf.BoxSize/rf.Nmesh, 
+                self.Phi[ni] = ut.interp(snap, rf.BoxSize/rf.Nmesh,
                     npy.array([ [\
                     r * npy.sin(self.theta_list[i]) * npy.cos(self.phi_list[i]) + origin[0],\
                     r * npy.sin(self.theta_list[i]) * npy.sin(self.phi_list[i]) + origin[1],\
@@ -544,26 +545,31 @@ class LightconeFromSnaps(Lightcone):
         self.counts = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
         count_density = 1 / (self.L_snap / self.N_snap)**3 \
             / (self.N_snap**3 / self.N_snap_part)
-
+        self.tot_p_num = 0
         ##########Reading slice by slice##############
         for fi in range(self.n_snaps - 1, -1, -1):
-            if (self.files[fi].attrs['Redshift'] < 1e-3):
-                continue
+            #if (self.files[fi].attrs['Redshift'] < 1e-3):
+            #    continue
             tau = -scpy.integrate.quad(self.Hint, 0,
                                        self.files[fi].attrs['Redshift'])[0]
-            if(fi > 0):
-                dtau = -scpy.integrate.quad(
-                    self.Hint, 0, self.files[fi - 1].attrs['Redshift'])[0] - tau
+            if(fi < self.n_snaps - 1):
+                dtau = scpy.integrate.quad(
+                    self.Hint, 0, self.files[fi + 1].attrs['Redshift'])[0] + tau
             else:
-                dtau = -tau
+                dtau = 0
 
             #print(str(tau) + ' ' + str(dtau))
             state = self.snap_den.proc_snap(fi, tau, dtau)
+            if(fi == self.n_snaps - 1):
+                continue
+
             if (state is False):
                 raise ValueError('Reading snapshot No. ' + str(fi) +
                                  ' failed!')
 
             p_num = int(self.snap_den.p_num() / 6)
+            self.tot_p_num += p_num
+            print(str(tau) + ' ' + str(dtau) + ' ' + str(p_num))
             pdata = npy.array(self.snap_den.get_pdata()).reshape(p_num, 6)
 
             if (self.zel_z is not None):

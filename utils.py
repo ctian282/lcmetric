@@ -2,7 +2,7 @@ import numpy as npy
 import healpy as hp
 import scipy as scpy
 # Using geometric unit,
-# when L = 3e5 Mpc, value of H = h *100 
+# when L = 3e5 Mpc, value of H = h *100
 L_UNIT = 3e5 # Mpc
 c = 3e5 # km/s
 
@@ -26,7 +26,7 @@ def np_fderv2(ta, dx, dir):
     res[-1] = (npy.take(ta, -3, axis = dir) + npy.take(ta, -1, axis = dir) \
               - 2 * npy.take(ta, -2, axis = dir)) / (dx)**2
     return res
-    
+
 
 def flap(ta, dx):
     return fderv2(ta, dx[0], 0) + fderv2(ta, dx[1], 1) + fderv2(ta, dx[2], 2)
@@ -49,7 +49,7 @@ def interp(ta, dx, x_list, grid = 'healpy'):
             x = x_list[n]
             #xl = (x / dx).astype(int)
             xl = npy.floor(x / dx).astype(int)
-            
+
             for i in range(2):
                 tempj = 0
                 for j in range(2):
@@ -57,10 +57,10 @@ def interp(ta, dx, x_list, grid = 'healpy'):
                     for k in range(2):
                         tempk += ta[(xl[0] + i)%ta.shape[0], (xl[1]+j)%ta.shape[1], (xl[2] + k)%ta.shape[2]] \
                             *(1- abs((x[2] - (xl[2] + k) * dx[2] ) )/ dx[2])
-                        
+
                     tempj += tempk * (1-abs((x[1] - (xl[1] + j) * dx[1] ) )/ dx[1])
                 val[n] += tempj *(1 - abs((x[0] - (xl[0] + i) * dx[0] ) )/ dx[0])
-                        
+
         return val
     elif(grid == 'pysh'):
         val = npy.zeros((x_list.shape[0], x_list.shape[1]))
@@ -68,7 +68,7 @@ def interp(ta, dx, x_list, grid = 'healpy'):
             for n in range(0, x_list.shape[1]):
                 x = x_list[m,n]
                 xl = npy.floor(x / dx).astype(int)
-            
+
                 for i in range(2):
                     tempj = 0
                     for j in range(2):
@@ -91,7 +91,7 @@ def interp(ta, dx, x_list, grid = 'healpy'):
 # Only linearly interpolate a sphere (r, nise)
 def f_r_derv(ta, dx, r, x_list, grid= 'healpy'):
 
-    # calcuate derivatives on all mesh here 
+    # calcuate derivatives on all mesh here
     derv1 = fderv1(ta, dx[0], 0)
     derv2 = fderv1(ta, dx[1], 1)
     derv3 = fderv1(ta, dx[2], 2)
