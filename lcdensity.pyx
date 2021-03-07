@@ -26,8 +26,8 @@ cdef class DensFromSnaps:
     cdef real_t pre_tau
 
     def __cinit__(self, files,
-                  real_t[:] origin, real_t L_snap, idx_t N_part, real_t init_r, cosmo_paras,
-                  real_t L_unit):
+                  real_t[:] origin, real_t L_snap, idx_t N_part, real_t init_r,
+                  cosmo_paras, real_t L_unit):
         self.cosmo_paras = cosmo_paras
         self.L_snap = L_snap
         self.N_part = N_part
@@ -38,6 +38,9 @@ cdef class DensFromSnaps:
         cdef real_t[:] box = npy.array([L_snap, L_snap, L_snap])
 
         self.c_dens = new _DensFromSnaps(N_part, &origin[0], init_r, &box[0])
+
+    def __dealloc__(self):
+        del self.c_dens
 
     def proc_snap(self, int fi, real_t tau, real_t dtau, pre_clear = False):
 

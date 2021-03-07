@@ -587,7 +587,7 @@ class LightconeFromSnaps(Lightcone):
 
         t = sorted(glob.glob(snaps_path))
         self.names = list()
-        self.files = list()
+        files = list()
         import os
         for i in range(0, len(t), n_threads):
             self.names.append(
@@ -599,15 +599,15 @@ class LightconeFromSnaps(Lightcone):
         self.n_snaps = len(self.names)
 
         for file in self.names:
-            self.files.append(Gadget1Catalog(file,columndefs=[ \
+            files.append(Gadget1Catalog(file,columndefs=[ \
                 ('Position', ('auto', 3), 'all',),
                 ('GadgetVelocity',  ('auto', 3), 'all', ),
                 ('ID', 'auto', 'all', )]))
 
         # Check if the input data are in increasing order
         for fi in range(1, self.n_snaps):
-            if (self.files[fi].attrs['Redshift'] <=
-                    self.files[fi - 1].attrs['Redshift']):
+            if (files[fi].attrs['Redshift'] <=
+                    files[fi - 1].attrs['Redshift']):
                 raise ValueError(
                     'The redshifts are not increasing for input snaps!')
 
@@ -615,14 +615,14 @@ class LightconeFromSnaps(Lightcone):
         if (init_snap_i < 0):
             init_snap_i += self.n_snaps
         print("Initial snap is set at redshift " +
-              str(self.files[init_snap_i].attrs['Redshift']))
+              str(files[init_snap_i].attrs['Redshift']))
         if (final_snap_i < 0):
             final_snap_i += self.n_snaps
         print("Final snap is set at redshift " +
-              str(self.files[final_snap_i].attrs['Redshift']))
+              str(files[final_snap_i].attrs['Redshift']))
 
-        self.init_z = self.files[init_snap_i].attrs['Redshift']
-        self.final_z = self.files[final_snap_i].attrs['Redshift']
+        self.init_z = files[init_snap_i].attrs['Redshift']
+        self.final_z = files[final_snap_i].attrs['Redshift']
         self.init_a = 1 / (1 + self.init_z)
         self.final_a = 1 / (1 + self.final_z)
 
@@ -645,17 +645,17 @@ class LightconeFromSnaps(Lightcone):
 
                 ni = self.NR - (init_snap_i - fi)
 
-                self.files[fi]['Position'] *= 1 / self.hL_unit
-                self.files[fi].attrs['BoxSize'] = self.L_snap
-                rf = (self.files[fi].to_mesh(self.N_snap).to_real_field(normalize=False)  \
-                    * ( self.N_snap**3 / self.files[fi]['Position'].shape[0] )  - 1.0 )
+                files[fi]['Position'] *= 1 / self.hL_unit
+                files[fi].attrs['BoxSize'] = self.L_snap
+                rf = (files[fi].to_mesh(self.N_snap).to_real_field(normalize=False)  \
+                    * ( self.N_snap**3 / files[fi]['Position'].shape[0] )  - 1.0 )
 
                 rf *= (1.5 * (cosmo_paras['h'] * 100)**2 *
                        cosmo_paras['Omega_m'] / self.a[ni])
                 snap = npy.ascontiguousarray(
                     ut.inverse_Lap(rf, self.L_snap, self.N_snap))
                 r = scpy.integrate.quad(self.Hint, 0,
-                                        self.files[fi].attrs['Redshift'])[0]
+                                        files[fi].attrs['Redshift'])[0]
                 print(str(ni) + ' ' + str(r) + ' ' + str(self.a[ni]))
                 self.Phi[ni] = utC.interp(snap, rf.BoxSize/rf.Nmesh,
                     npy.ascontiguousarray([ [\
@@ -700,10 +700,10 @@ class LightconeFromSnaps(Lightcone):
             rf_i2 = npy.ascontiguousarray(
                 ut.inverse_derv(Phi_snap_I, L_snap, N_snap, 2))
 
-        self.N_snap_part = self.files[0]['Position'].shape[0]
+        self.N_snap_part = files[0]['Position'].shape[0]
 
-        self.snap_den = dens.DensFromSnaps(self.files, origin, self.L_snap,
-                                           self.files[0]['Position'].shape[0],
+        self.snap_den = dens.DensFromSnaps(files, origin, self.L_snap,
+                                           files[0]['Position'].shape[0],
                                            self.init_r, self.cosmo_paras,
                                            self.hL_unit)
 
@@ -721,14 +721,13 @@ class LightconeFromSnaps(Lightcone):
 
         ##########Reading slice by slice##############
         for fi in range(self.n_snaps - 1, -1, -1):
-            #if (self.files[fi].attrs['Redshift'] < 1e-3):
+            #if (files[fi].attrs['Redshift'] < 1e-3):
             #    continue
             tau = -scpy.integrate.quad(self.Hint, 0,
-                                       self.files[fi].attrs['Redshift'])[0]
+                                       files[fi].attrs['Redshift'])[0]
             if (fi < self.n_snaps - 1):
                 dtau = scpy.integrate.quad(
-                    self.Hint, 0,
-                    self.files[fi + 1].attrs['Redshift'])[0] + tau
+                    self.Hint, 0, files[fi + 1].attrs['Redshift'])[0] + tau
             else:
                 dtau = 0
 
@@ -775,4 +774,4 @@ class LightconeFromSnaps(Lightcone):
                                  self.Phi_i, self.Pi_i, self.cosmo_paras,
                                  self.final_r, self.Phi_f)
         del self.snap_den
-        del self.files
+        del files

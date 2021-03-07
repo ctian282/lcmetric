@@ -39,7 +39,6 @@ cpdef interp(real_t[:,:,::1] ta, real_t [:] dx, real_t[:,::1] x_list):
 # Only linearly interpolate a sphere (r, nise)
 def f_r_derv(ta, dx, origin, r, x_list):
 
-
     # calcuate derivatives on all mesh here
     derv1 = fderv1(ta, dx[0], 0)
     derv2 = fderv1(ta, dx[1], 1)

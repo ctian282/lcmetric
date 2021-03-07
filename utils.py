@@ -1,5 +1,6 @@
 import numpy as npy
 import scipy as scpy
+import struct
 # Using geometric unit,
 # when L = 3e5 Mpc, value of H = h *100
 L_UNIT = 3e5  # Mpc
@@ -38,15 +39,14 @@ def flap(ta, dx):
     return fderv2(ta, dx[0], 0) + fderv2(ta, dx[1], 1) + fderv2(ta, dx[2], 2)
 
 
-def interp_lc(ta, dr, r, offset):
-    rl = npy.floor(r / dr).astype(int)
-    print(rl)
-    if (rl + 1 + offset >= ta.shape[0]):
+def interp_lc(ta, r, r_offset, dr):
+    rl = npy.floor((r - r_offset) / dr).astype(int)
+    if (rl + 1 >= ta.shape[0]):
         raise ValueError('r is too large!')
-    elif (rl + offset < 0):
+    elif (rl < 0):
         raise ValueError('r is too small!')
-    ans = (1 - npy.abs(r - rl * dr) / dr) * ta[rl + offset] + (
-        npy.abs(r - rl * dr) / dr) * ta[rl + 1 + offset]
+    ans = (1 - npy.abs(r - rl * dr) / dr) * ta[rl] \
+        + (npy.abs(r - rl * dr) / dr) * ta[rl + 1]
     return ans
 
 
@@ -64,8 +64,10 @@ def interp(ta, dx, x_list, grid='healpy'):
                 for j in range(2):
                     tempk = 0
                     for k in range(2):
-                        tempk += ta[(xl[0] + i)%ta.shape[0], (xl[1]+j)%ta.shape[1], (xl[2] + k)%ta.shape[2]] \
-                            *(1- abs((x[2] - (xl[2] + k) * dx[2] ) )/ dx[2])
+                        tempk += ta[(xl[0] + i) % ta.shape[0],
+                                    (xl[1]+j) % ta.shape[1],
+                                    (xl[2] + k) % ta.shape[2]]\
+                                    *(1- abs((x[2] - (xl[2] + k) * dx[2] ) )/ dx[2])
 
                     tempj += tempk * (1 - abs(
                         (x[1] - (xl[1] + j) * dx[1])) / dx[1])
@@ -160,3 +162,29 @@ def inverse_Hint(z, r, Hubble, Omega_m, Omega_L):
 def r2z(r, Hubble, Omega_m, Omega_L):
     return scpy.optimize.minimize_scalar(inverse_Hint,
                                          args=(r, Hubble, Omega_m, Omega_L)).x
+
+
+def unf_read_file(file, p_list=[], np=7):
+    with open(file, mode="rb") as f:
+        tot_n = 0
+        cnt = 0
+        while (True):
+            cnt += 1
+            r = f.read(4)
+            if not r: break
+
+            a1 = struct.unpack('i', r)
+
+            r = f.read(a1[0])
+            n = struct.unpack('i', r)
+
+            r = f.read(8)
+            a, b = struct.unpack('2i', r)
+
+            r = f.read(b)
+            p_list.extend(struct.unpack(str(n[0] * np) + 'f', r))
+
+            r = f.read(4)
+            tot_n += n[0]
+    f.close()
+    return tot_n
