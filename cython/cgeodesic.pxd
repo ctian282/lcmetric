@@ -1,7 +1,7 @@
 from libcpp cimport bool
-cdef extern from "geodesic_macros.h":
+cdef extern from "c++/geodesic_macros.h":
     pass
-cdef extern from "geodesic.h":
+cdef extern from "c++/geodesic.h":
 
     ctypedef double real_t
     ctypedef int idx_t
@@ -44,4 +44,3 @@ cdef extern from "geodesic.h":
         real_t *z;
 
         real_t *ang_corrs;
-

@@ -1,4 +1,4 @@
-cdef extern from "lightcone_CIC.h":
+cdef extern from "c++/lightcone_CIC.h":
 
      ctypedef double real_t
      ctypedef int idx_t

@@ -155,7 +155,7 @@ class _Geodesic
     // n_alm_idx = lm_base->Num_Alms(lmax, lmax);
     // l_list = new idx_t[n_alm_idx];
     // m_list = new idx_t[n_alm_idx];
-    
+
     // for(int l = 0; l <= lmax; l++)
     // {
     //   for(int m = 0; m <= lmax; m++)
@@ -164,7 +164,7 @@ class _Geodesic
     //     m_list[lm_base->index(l,m)] = m;
     //   }
     // }
-    
+
     ang_list = new pointing[NPIX];
     for(int i = 0; i < NPIX; i++)
       ang_list[i] = hp->pix2ang(i);
@@ -200,11 +200,11 @@ class _Geodesic
     diff_s_ang = new real_t [n_p]();
 
     z = new real_t [n_p]();
-    
+
     GEODESIC_APPLY_TO_FIELDS_ARGS(RK2_FIELDS_ALL_INIT, n_p);
     GEODESIC_APPLY_TO_COMPLEX_FIELDS_ARGS(RK2_COMPLEX_FIELDS_ALL_INIT, n_p);
   }
-  
+
   // Targets are healpix pixels at distance r
   void init_with_healpix_tars(real_t r)
   {
@@ -270,7 +270,7 @@ class _Geodesic
     for(idx_t i = 0; i < NPIX; i++)
       Phi_s_drdphi[c][i] *= sin(ang_list[i].theta);
 
-        
+
     // Calculating second and mixing derivatives
     map2alm_iter(Phi_s_dphi[c], temp_lm, n_iter);
     alm2map_der1(temp_lm, temp_map[c], Phi_s_dthetadphi[c], Phi_s_ddphi[c]);
@@ -282,7 +282,7 @@ class _Geodesic
     hp_time_con += (double)(duration.count()) * microseconds::period::num / microseconds::period::den;
   }
 
-  
+
   /**********************RHS of geodesics***************/
 
   real_t dtheta_dt(Photon &p)
@@ -318,7 +318,7 @@ class _Geodesic
       - 2.0 * (p.dPhi_dphi / PW2(p.r * sin(p.pt.theta)));
 
   }
-  
+
   real_t dDA_dt(Photon &p)
   {
     return p.dDAdt;
@@ -367,7 +367,7 @@ class _Geodesic
       (p.e1r * p.dPhi_dr + p.e1theta * p.dPhi_dtheta + p.e1phi * p.dPhi_dphi);
   }
 
-  
+
   real_t dbeta1_dt(Photon &p)
   {
     return 2.0 * p.beta1 * (p.Omega + p.dPhi_dr)
@@ -414,7 +414,7 @@ class _Geodesic
       (PW2(p.DA) * (4 + 2 * sqrt(4 + PW2(std::abs(p.epsilon)) )));
   }
 
-  
+
   /****************************************************/
 
   void set_photon_values(Photon &p, idx_t p_id, idx_t n, idx_t c)
@@ -457,7 +457,7 @@ class _Geodesic
     p.dPhi_ddtheta -= -p.r * p.dPhi_dr;
     p.dPhi_dthetadphi -= p.dPhi_dphi / tan(p.pt.theta);
     p.dPhi_ddphi -= -p.r * PW2(sin(p.pt.theta)) * p.dPhi_dr - cos(p.pt.theta) * sin(p.pt.theta) * p.dPhi_dtheta;
-      
+
   }
 
   void set_inter_slice_photon_values(Photon &p, idx_t p_id, idx_t n, idx_t c, real_t weight_l)
@@ -471,27 +471,27 @@ class _Geodesic
 
     p.r = to_r(n) + weight_l * dr;
     p.a = (1.0 - weight_l) * a[n] + weight_l * a[n+1];
-    
+
     p.pt = pointing(p.theta, p.phi);
     p.Phi = (1.0 - weight_l) * Phi_s[c].interpolated_value(p.pt)
       + weight_l * Phi_s[1-c].interpolated_value(p.pt);
-    
+
     p.dPhi_dr = (1.0 - weight_l) * Pi_s[c].interpolated_value(p.pt)
       + weight_l * Pi_s[1-c].interpolated_value(p.pt);
-    
+
     p.dPhi_dtheta = (1.0 - weight_l) * Phi_s_dtheta[c].interpolated_value(p.pt)
       + weight_l * Phi_s_dtheta[1-c].interpolated_value(p.pt);
-    
+
     p.dPhi_dphi = (1.0 - weight_l) * Phi_s_dphi[c].interpolated_value(p.pt)
       + weight_l * Phi_s_dphi[1-c].interpolated_value(p.pt);
-    
+
     p.Omega = (1.0 - weight_l) * Omega_s[c].interpolated_value(p.pt)
       + weight_l * Omega_s[1-c].interpolated_value(p.pt);
-    
+
     // Ordinary derivatives
     p.dPhi_ddr = (1.0 - weight_l) * Phi_s_ddr[c].interpolated_value(p.pt)
       + weight_l * Phi_s_ddr[1-c].interpolated_value(p.pt);
-    
+
     p.dPhi_drdtheta = (1.0 - weight_l) * Phi_s_drdtheta[c].interpolated_value(p.pt)
       + weight_l * Phi_s_drdtheta[1-c].interpolated_value(p.pt);
     p.dPhi_drdphi = (1.0 - weight_l) * Phi_s_drdphi[c].interpolated_value(p.pt)
@@ -507,7 +507,7 @@ class _Geodesic
                  + weight_l * Phi_s_ang_lap[1-c].interpolated_value(p.pt))
       / PW2(p.r)
       + (2 * p.dPhi_dr + p.r * p.dPhi_ddr) / p.r ;
-    
+
     // Adding connection terms to from covariant derivatives
     p.dPhi_ddr += 0;
     p.dPhi_drdtheta -= p.dPhi_dtheta / p.r;
@@ -633,13 +633,13 @@ class _Geodesic
         phi_derv = (dphi - d_diff_tar_ang[2*i+1] ) / d_diff_ang[2*i+1];
 
 
-      
+
       ang_corrs[2*i] += - dtheta / theta_derv;
       ang_corrs[2*i+1] += - dphi / phi_derv;
 
       d_diff_tar_ang[2*i] = dtheta;
       d_diff_tar_ang[2*i+1] = dphi;
-      
+
       d_diff_ang[2*i] = - dtheta / theta_derv;
       d_diff_ang[2*i+1] = - dphi / phi_derv;
     }

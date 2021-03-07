@@ -2,7 +2,7 @@ from libcpp cimport bool
 from libcpp.vector cimport vector
 
 
-cdef extern from "lcdensity.h":
+cdef extern from "c++/lcdensity.h":
 
     ctypedef double real_t
     ctypedef long long idx_t

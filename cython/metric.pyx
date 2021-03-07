@@ -175,7 +175,7 @@ class Metric:
         """
         From mesh idx to radius
         """
-        return self.tau_f + ntau / self.Ntau * (self.tau_i - self.tau_f) 
+        return self.tau_f + ntau / self.Ntau * (self.tau_i - self.tau_f)
     # ---------Functions of time derivatives-----------------------
 
     def da_dt(self, ntau):
@@ -276,7 +276,7 @@ class Metric:
 
         for field in self.metric_a:
             self.metric_a[field] += self.metric_dt[field] * dtau
-            self.metric_f[field][ntau-1] = self.metric_f[field][ntau] + 0.5 * dtau * self.metric_dt[field] 
+            self.metric_f[field][ntau-1] = self.metric_f[field][ntau] + 0.5 * dtau * self.metric_dt[field]
 
         self.update_other_field(ntau-1)
 
@@ -289,7 +289,7 @@ class Metric:
 
 
         for field in self.metric_a:
-            self.metric_f[field][ntau] += 0.5 * dtau * self.metric_dt[field] 
+            self.metric_f[field][ntau] += 0.5 * dtau * self.metric_dt[field]
             self.metric_a[field] = self.metric_f[field][ntau].copy()
 
         self.update_other_field(ntau)
@@ -307,7 +307,7 @@ class Metric:
             #self.est_angle_lap(step, d)
             rhs = self.dPhi_dt(step, d) + self.rhs_hier[d][step]
             lhs = (self.Phi_hier[d][step + 1] + self.Phi_hier[d][step - 1] \
-                   - 2.0 * self.Phi_hier[d][step ])/ self.dtau_hier[d]**2 
+                   - 2.0 * self.Phi_hier[d][step ])/ self.dtau_hier[d]**2
 
             bak = err
             real_err = npy.abs(hp.alm2map(rhs - lhs, self.nside))
@@ -367,8 +367,8 @@ class Metric:
 
     def update_Pi(self, d):
         """
-        Since Pi has directly dependence on Phi dot, this will 
-        generate a new Pi whenever the value of Phi 
+        Since Pi has directly dependence on Phi dot, this will
+        generate a new Pi whenever the value of Phi
         """
         for step in  range(self.h_size[d] - 2, -1, -1):
             dt = self.dPi_dt(step + 1, d)
@@ -386,12 +386,12 @@ class Metric:
 
     def clear_field(self, data):
         for d in range(self.depth):
-            data[d].fill(0) 
+            data[d].fill(0)
 
     def MG(self):
         """
-        V-cycle multigrid. Starting from relaxing the finest grid. Might be able to 
-        get speed-up when using more complicaed cycles with proper stop critiria 
+        V-cycle multigrid. Starting from relaxing the finest grid. Might be able to
+        get speed-up when using more complicaed cycles with proper stop critiria
         """
         n_vcycles = self.n_vcycles
         while(n_vcycles >0):
@@ -497,7 +497,7 @@ class Metric:
                 data[n], lmax = self.lmax, iter = self.alm_iter) \
                                    for n in range(len(data))])
         else:
-            return hp.sphtfunc.map2alm( 
+            return hp.sphtfunc.map2alm(
                 data, lmax = self.lmax, iter = self.alm_iter)
 
     def to_real(self, data, array_data = True):
@@ -639,7 +639,7 @@ class Metric:
 
         self.matter['delta'] = delta[0:self.Ntau+1].copy()
         self.matter['vw'] = vw[0:self.Ntau+1].copy()
-        # Need to substract extra 2 padding grid 
+        # Need to substract extra 2 padding grid
 
         #self.sols['Phi'][-1] = Phi_i_in.copy()
         #self.sols['Pi'][-1] = Pi_i_in.copy()
@@ -688,8 +688,8 @@ class Metric:
             initial z
         r_max_in: float
             initial radial distance at z
-        delta_in: float, shape(N+2, NPIX) 
-        delta_in: float, shape(N+2, NPIX) 
+        delta_in: float, shape(N+2, NPIX)
+        delta_in: float, shape(N+2, NPIX)
         Phi_i_in: float, shape(NPIX)
         Pi_i_in: float, shape(NPIX)
         Paras: list
@@ -720,7 +720,7 @@ class Metric:
 
         self.matter['delta'] = delta_in[0:self.Ntau+1].copy()
         self.matter['vw'] = vw_in[0:self.Ntau+1].copy()
-        # Need to substract extra 2 padding grid 
+        # Need to substract extra 2 padding grid
 
 
         self.sols['Phi'][-1] = Phi_i_in.copy()
@@ -758,15 +758,3 @@ class Metric:
         # to maintain smoothness when caclulating time derivatives.
         self.sols['Phi'] = self.to_real(self.Phi_hier[0])
         self.sols['Pi'] = self.to_real(self.Pi_hier[0])
-
-
-
-
-
-
-
-
-
-
-
-
