@@ -1,4 +1,0 @@
-For iteration 0 , the max different solid angle is 7.10159e-07, for ray id 32388
-For iteration 1 , the max different solid angle is 9.99892e-08, for ray id 71405
-Total time consumption is 303.571s
-  Time consumption for healpix is 197.5s

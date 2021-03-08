@@ -43,7 +43,7 @@ def snap_to_phi(path, cosmo_paras, L_snap, N_snap, marker):
            (N_snap**3 / N_snap_part) - 1.0) *
           (1.5 * (cosmo_paras['h'] * 100)**2 * cosmo_paras['Omega_m'] / a))
     Phi = ut.inverse_Lap(rf, L_snap, N_snap)
-    snap_pw = alg.fftpower.FFTPower(f, mode='1d').run()
+    snap_pw = alg.fftpower.FFTPower(f, mode='1d')
 
     dir = os.path.dirname(path)
     with open(dir + '/pw_' + marker + str(int(z * 1000)) + '.dat',
