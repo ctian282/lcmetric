@@ -39,19 +39,22 @@ def snap_to_phi(path, cosmo_paras, L_snap, N_snap, marker):
     print('BoxSize is ' + str(L_snap) + ', and redshift is ' + str(z))
     a = 1 / (1 + z)
     N_snap_part = f['Position'].shape[0]
-    rf = ((f.to_mesh(N_snap).to_real_field(normalize=False) *
-           (N_snap**3 / N_snap_part) - 1.0) *
-          (1.5 * (cosmo_paras['h'] * 100)**2 * cosmo_paras['Omega_m'] / a))
-    Phi = ut.inverse_Lap(rf, L_snap, N_snap)
+    # rf = ((f.to_mesh(N_snap).to_real_field(normalize=False) *
+    #        (N_snap**3 / N_snap_part) - 1.0) *
+    #       (1.5 * (cosmo_paras['h'] * 100)**2 * cosmo_paras['Omega_m'] / a))
+    # Phi = ut.inverse_Lap(rf, L_snap, N_snap)
     snap_pw = alg.fftpower.FFTPower(f, mode='1d').run()
-
+    k = snap_pw[0]['k']
+    power = snap_pw[0]['power']
+    modes = snap_pw[0]['modes']
+    ans = [k, power, modes]
     dir = os.path.dirname(path)
     with open(dir + '/pw_' + marker + str(int(z * 1000)) + '.dat',
               'wb') as file:
-        pl.dump(snap_pw, file)
+        pl.dump(ans, file)
     file.close()
 
-    with open(dir + '/Phi_' + marker + str(int(z * 1000)) + '.dat',
-              'wb') as file:
-        pl.dump(Phi, file)
-    file.close()
+    # with open(dir + '/Phi_' + marker + str(int(z * 1000)) + '.dat',
+    #           'wb') as file:
+    #     pl.dump(Phi, file)
+    # file.close()
