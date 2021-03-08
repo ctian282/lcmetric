@@ -23,7 +23,7 @@ setup(ext_modules=cythonize([
         ["cython/lightcone_CIC.pyx"],
         include_dirs=["/usr/include/healpix_cxx/"],
         extra_compile_args=["-O3", "-fopenmp", "-std=c++14"],
-        extra_link_args=["-lhealpix_cxx", "-lcfitsio", "-lz"],
+        extra_link_args=["-lhealpix_cxx", "-lz"],
         language="c++",
     ),
     Extension(
@@ -37,7 +37,7 @@ setup(ext_modules=cythonize([
         ["cython/geodesic.pyx"],
         include_dirs=["/usr/include/healpix_cxx/"],
         extra_compile_args=["-O3", "-fopenmp", "-std=c++14"],
-        extra_link_args=["-lhealpix_cxx", "-lcfitsio", "-lz"],
+        extra_link_args=["-lhealpix_cxx", "-lz"],
         language="c++",
     ),
     Extension(
@@ -45,7 +45,7 @@ setup(ext_modules=cythonize([
         ["cython/lcdensity.pyx"],
         include_dirs=["/usr/include/healpix_cxx/"],
         extra_compile_args=["-O3", "-fopenmp", "-std=c++14"],
-        extra_link_args=["-lhealpix_cxx", "-lcfitsio", "-lz"],
+        extra_link_args=["-lhealpix_cxx", "-lz"],
         language="c++",
     )
 ],
