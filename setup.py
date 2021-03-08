@@ -23,13 +23,14 @@ setup(ext_modules=cythonize([
         ["cython/lightcone_CIC.pyx"],
         include_dirs=["/usr/include/healpix_cxx/"],
         extra_compile_args=["-O3", "-fopenmp", "-std=c++14"],
-        extra_link_args=["-lhealpix_cxx", "-lz"],
+        extra_link_args=["-lhealpix_cxx", "-lz", "-lgomp"],
         language="c++",
     ),
     Extension(
         "cutils",
         ["cython/utils.pyx"],
         extra_compile_args=["-O3", "-fopenmp", "-std=c++14"],
+        extra_link_args=["-lgomp"],
         language="c++",
     ),
     Extension(
@@ -37,7 +38,7 @@ setup(ext_modules=cythonize([
         ["cython/geodesic.pyx"],
         include_dirs=["/usr/include/healpix_cxx/"],
         extra_compile_args=["-O3", "-fopenmp", "-std=c++14"],
-        extra_link_args=["-lhealpix_cxx", "-lz"],
+        extra_link_args=["-lhealpix_cxx", "-lz", "-lgomp"],
         language="c++",
     ),
     Extension(
