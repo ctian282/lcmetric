@@ -48,27 +48,6 @@ class Lightcone:
                               npost=16,
                               lmax=2 * NSIDE - 1,
                               verbose=False)
-        try:
-            if (keyws['from_files'] is True):
-                self.Phi_i = self.read_pickle(keyws['Phi_i_path'])
-                self.Pi_i = self.read_pickle(keyws['Pi_i_path'])
-                self.Phi_f = self.read_pickle(keyws['Phi_f_path'])
-                self.delta = self.read_pickle(keyws['delta_path'])
-                self.vw = self.read_pickle(keyws['vw_path'])
-                self.init_z = keyws['init_z']
-                self.final_z = keyws['final_z']
-
-                self.init_r = scpy.integrate.quad(self.Hint, 0, self.init_z)[0]
-                # Final comoving distance
-                self.final_r = scpy.integrate.quad(self.Hint, 0,
-                                                   self.final_z)[0]
-
-                self.met.init_from_slice(self.init_z, self.init_r, self.delta,
-                                         self.vw, self.Phi_i, self.Pi_i,
-                                         self.cosmo_paras, self.final_r,
-                                         self.Phi_f)
-        except:
-            pass
 
     # 1/H(z)
     def Hint(self, z):
@@ -325,6 +304,8 @@ class LightconeFromConePhi(Lightcone):
 
 
 class LightconeFromCone(Lightcone):
+    """Generating lightcone mesh from particle cone data
+    """
     def to_r(self, n, nr):
         return n / nr * (self.init_r - self.final_r) + self.final_r
 
@@ -345,6 +326,53 @@ class LightconeFromCone(Lightcone):
                  cone_type='CSV',
                  snap_type='Gadget1',
                  lensing_kappa=False):
+        """Initializing lightcone object from particle cone data.
+
+        Parameters:
+        -----
+        cone_path: string
+        An regular expression of path that match ALL light-cone files
+
+        Phi_i_path: string
+        An regular expression of path that match ALL files representing
+        the initial slice (high z)
+
+        Phi_f_path: string
+        An regular expression of path that match ALL files representing
+        the final slice (low z)
+
+        origin: float, shape(3,)
+
+        cosmo_paras: dict
+        need to contain keywords 'h', 'Omega_m', 'Omega_L'
+
+        L_snap: float, Box size in h^-1 Mpc
+
+        N_snap: int, Box resolution
+
+        init_z: float, redshift of the initial slice
+
+        final_z: float, redshift of the initial slice
+
+        NR: int, radial resolution of the lightcone mesh
+
+        NSIDE: int, helpix NSIDE, angular resolution
+
+        zel_z: float
+        Redshift of the N-body initial data slice, for relativistic
+        corrections. It it is None, no correction
+
+        Phi_zel_path: string
+        Path for the N-body initial data slice, can be None
+
+        cone_type: string, type of the lightcone particle files, Gadget1 or CSV
+
+        snap_type: string, type of the snapshots, Gadget1 or CSV
+
+        lensing_kappa: bool
+        If also deposite particles when reading light-cone data ot calculate
+        lensing convergence
+        """
         Lightcone.__init__(self, origin, cosmo_paras, L_snap, N_snap, NR,
                            NSIDE)
 
@@ -555,6 +583,9 @@ class LightconeFromCone(Lightcone):
 
 
 class LightconeFromSnaps(Lightcone):
+    """Lightcone mesh from snapshots, can choose to use relaxation
+    or not.
+    """
     def to_r(self, n, nr):
         return n / nr * (self.init_r - self.final_r) + self.final_r
 
@@ -575,6 +606,55 @@ class LightconeFromSnaps(Lightcone):
                  NR_is_N_snap=False,
                  lensing_kappa=False,
                  need_reduce=False):
+        """Initializing lightcone object from particle cone data.
+
+        Parameters:
+        -----
+        snap_path: string
+        An regular expression of path that match ALL snapshots files.
+        The name for each snap should be followed by a '.thread',
+        where thread represents the idx of thread generating this snap.
+
+        n_threads: threads number of n-body code
+
+        origin: float, shape(3,)
+
+        cosmo_paras: dict
+        need to contain keywords 'h', 'Omega_m', 'Omega_L'
+
+        L_snap: float, Box size in h^-1 Mpc
+
+        N_snap: int, Box resolution
+
+        init_snap_i: int, index of the initial snap you want to push into the mesh
+
+        final_snap_i: int,index of the final snap you want to push into the mesh
+
+        NR: int, radial resolution of the lightcone mesh
+
+        NSIDE: int, helpix NSIDE, angular resolution
+
+        zel_z: float
+        Redshift of the N-body initial data slice, for relativistic
+        corrections. It it is None, no correction
+
+        Phi_zel_path: string
+        Path for the N-body initial data slice, can be None
+
+        snap_type: string, type of the snapshots, Gadget1 or CSV
+
+        NR_is_N_snap: bool, optional
+        If NR should just be N_snap, so that a very undersampled
+        light-cone mesh will be built representing a traditional treatment
+
+        lensing_kappa: bool, optional
+        If also deposite particles when reading light-cone data ot calculate
+        lensing convergence
+
+        need_reduce: bool, optional
+        If the number of snaps should be reduced by a factor of 4
+        (to gnerate even more sparse data)
+        """
 
         Lightcone.__init__(self, origin, cosmo_paras, L_snap, N_snap, NR,
                            NSIDE)
@@ -633,8 +713,12 @@ class LightconeFromSnaps(Lightcone):
         self.final_r = scpy.integrate.quad(self.Hint, 0, self.final_z)[0]
 
         if (NR_is_N_snap is True):
+            """If we do want to build a lightcone mesh just based on snapshots
+            data without any further information.
+            """
             self.NR = init_snap_i - final_snap_i + 1
-            print('Setting the radial resolution NR as ' + str(self.NR))
+            print('Setting the radial resolution NR as ' + str(self.NR) +
+                  'since we do want NR is N_snap')
 
             self.a = npy.array([1/(1+scpy.optimize.minimize_scalar(
                 self.inverse_Hint, args=(self.to_r(n, self.NR))).x) \

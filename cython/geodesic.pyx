@@ -99,7 +99,6 @@ cdef class Geodesic:
 
     def shooting_states(self):
         cdef int n_p = self.c_geo.n_p;
-
         npy_arr = <idx_t[:n_p]>self.c_geo.tars_lower_bins
 
         return npy_arr;

@@ -1,12 +1,9 @@
 import numpy as npy
 import scipy as scpy
 import struct
-# Using geometric unit,
-# when L = 3e5 Mpc, value of H = h *100
-L_UNIT = 3e5  # Mpc
-c = 3e5  # km/s
 
 
+# First direvative
 def fderv1(ta, dx, dir):
     return (-0.5 * npy.roll(ta, 1, axis=dir) +
             0.5 * npy.roll(ta, -1, axis=dir)) / (dx)

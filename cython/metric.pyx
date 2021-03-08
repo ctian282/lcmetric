@@ -199,23 +199,6 @@ class Metric:
     + 3 * self.Hubble_0**2 * self.Omega_m / self.a_hier[d][ntau] * self.vw_hier[d][ntau]
 
 
-
-    # def dPi_dt(self, ntau, d):
-    #     if (ntau == self.h_size[d] - 1):
-    #         Omega_dot = (self.Phi_hier[d][ntau] + self.Phi_hier[d][ntau-2] - 2*self.Phi_hier[d][ntau-1]) \
-    #             / (self.dtau_hier[d])**2
-    #         Omega = -(self.Phi_hier[d][ntau] - self.Phi_hier[d][ntau-1]) / self.dtau_hier[d]
-    #     else:
-    #         Omega_dot = (self.Phi_hier[d][ntau+1] + self.Phi_hier[d][ntau-1] - 2*self.Phi_hier[d][ntau]) \
-    #             / (self.dtau_hier[d])**2
-    #         Omega = -(self.Phi_hier[d][ntau + 1] - self.Phi_hier[d][ntau-1]) / (2.0 * self.dtau_hier[d])
-
-    #     return - Omega_dot - 3 * self.Hubble_hier[d][ntau] * Omega \
-    #         - 2 * self.Hubble_hier[d][ntau] * self.Pi_hier[d][ntau] \
-    #         - (2 * self.Hubble_dt_hier[d][ntau] + self.Hubble_hier[d][ntau]**2) * self.Phi_hier[d][ntau] \
-    #         + 1.5 * self.Hubble_0**2 * self.Omega_m / self.a_hier[d][ntau] * self.vw_hier[d][ntau]
-
-
     def dPi_dt(self, step, d):
         cdef npy.ndarray[double complex, ndim=1, mode='c'] dt = npy.zeros(self.Nalms, dtype = complex)
         if(step == self.h_size[d] - 1):
@@ -339,13 +322,6 @@ class Metric:
                                    self.Hubble_hier[d][step], \
                                    self.Hubble_0, self.Hubble_dt_hier[d][step], self.Omega_m, \
                                    self.dtau_hier[d])
-                        # self.Phi_hier[d][step] = \
-                        #     ((self.est_f(step, d) + self.rhs_hier[d][step]) \
-                        #      - (self.Phi_hier[d][step + 1] + self.Phi_hier[d][step - 1]) / self.dtau_hier[d]**2 \
-                        #     ) / (-2 / self.dtau_hier[d]**2 + self.lm / self.tau_hier[d][step]**2 \
-                        #          + 2.0 * \
-                        #          (self.Hubble_dt_hier[d][step] - self.Hubble_hier[d][step]**2
-                        #           - 1.5**2 * self.Hubble_0**2 *self.Omega_m / self.a_hier[d][step]))
 
                     elif field == 'Pi':
                         # Time integrate Pi

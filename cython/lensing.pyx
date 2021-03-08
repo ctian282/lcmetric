@@ -1,4 +1,4 @@
-# distutils: sources = 
+# distutils: sources =
 # distutils: include_dirs = ./ /usr/include/healpix_cxx/
 
 import numpy as npy
@@ -67,6 +67,8 @@ class Lensing:
         else:
             raise ValueError('Mode can not be processed!')
 
+        self.has_tar = False
+
 
 ##############Doing lensing potential thing########################
 
@@ -87,7 +89,6 @@ class Lensing:
 
         lr_idx = int(npy.floor( (r - self.final_r) / ( (self.init_r - self.final_r)/ self.NR) ))
 
-
         for nr in range(lr_idx):
             Psi += self.dr_list[nr] * 0.5 * \
                 (self.lensing_pot_int(r, nr) \
@@ -96,29 +97,28 @@ class Lensing:
         # Last step
         Psi += (r - self.to_tau(lr_idx)) * self.lensing_pot_int(r, lr_idx) \
 
-        Psi = -0.5 * hp.sphtfunc.alm2map(\
-                        (hp.sphtfunc.map2alm(Psi, lmax = self.lmax, iter = 30) \
-                         * self.lm ), nside = self.NSIDE)
+        Psi = -0.5 * hp.sphtfunc.alm2map(
+                        (hp.sphtfunc.map2alm(Psi, lmax=self.lmax, iter=30)
+                         * self.lm), nside=self.NSIDE)
         return Psi
-
-
 
 ######################Finishing lensing potential thing##########################
 
-
     def set_sources(self, **kwargs):
-        if(kwargs['init_with_hp_tars'] == True):
+
+        if(kwargs['init_with_hp_tars'] is True):
             self.r = kwargs['r']
 
-            if( self.r < self.final_r or self.r > self.init_r):
+            if (self.r < self.final_r or self.r > self.init_r):
                 raise ValueError('r is too large or too small!')
 
-            if(self.mode is 'ray_tracing'):
+            if (self.mode is 'ray_tracing'):
                 self.geo.init_with_healpix_tars(self.r)
-            elif(self.mode is 'born_approx_snap'):
+            elif (self.mode is 'born_approx_snap'):
                 pass
-        elif(kwargs['init_with_input_tars'] == True):
-            ValueError('The target type has not been supported yet')
+        elif(kwargs['init_with_input_tars'] is True):
+            raise ValueError('The target type has not been supported yet')
+        self.has_tar = True
 
     def gen_lc_lensing_conv(self, r):
         resol = 4*npy.pi / (self.NPIX)
@@ -127,13 +127,17 @@ class Lensing:
             self.L_snap**3 / self.N_snap_part / resol * \
             (self.kappa1 - self.kappa2 / r)
         lower_r_bin = \
-            int(npy.floor( (r - self.final_r) / ( (self.init_r - self.final_r)/ self.NR) ))
-        res = temp[0:lower_r_bin+1,:].sum(axis = 0)
-        lw = r - lower_r_bin * ((self.init_r - self.final_r)/ self.NR)
+            int(npy.floor(
+                (r - self.final_r) / ((self.init_r - self.final_r) / self.NR)))
+        res = temp[0:lower_r_bin+1, :].sum(axis=0)
+        lw = r - lower_r_bin * ((self.init_r - self.final_r) / self.NR)
         res += temp[lower_r_bin] * (1 - lw) + temp[lower_r_bin + 1] * lw;
         return res
 
     def calculate(self):
+        if (self.has_tar is False):
+            raise ValueError('A target has not been set-up yet!')
+
         if(self.mode is 'ray_tracing'):
             print('Start shooting!')
             self.geo.shoot()
@@ -155,5 +159,3 @@ class Lensing:
             - (2 * self.met.metric_f['Hubble_dt'][:,None] \
                + self.met.metric_f['Hubble'][:,None]**2) * self.met.sols['Phi']
         return (Omega, Omega_dot, Pi_dot, dPi_dr)
-
-
