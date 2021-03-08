@@ -4,7 +4,6 @@
 import numpy as npy
 import healpy as hp
 import numexpr as ne
-import numba as nb
 
 import lcmetric.utils as ut
 
