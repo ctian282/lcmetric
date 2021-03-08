@@ -685,7 +685,8 @@ public:
         }
         auto end   = system_clock::now();
         auto duration = duration_cast<microseconds>(end - start);
-        tot_time_con += double(duration.count()) * microseconds::period::num / microseconds::period::den;
+        tot_time_con += double(duration.count()) *
+            microseconds::period::num / microseconds::period::den;
 
         cout<<"Total time consumption is "<<tot_time_con<<"s"<<std::endl;
         cout<<"  Time consumption for healpix is "<<hp_time_con<<"s"<<std::endl;
