@@ -143,7 +143,6 @@ class Lensing:
         elif(self.mode is 'born_approx_lc'):
             return self.gen_lc_lensing_conv(self.r)
 
-
     def gen_fields_for_rt(self):
         Omega = ut.np_fderv1(
             self.met.sols['Phi'], -(self.init_r - self.final_r) / self.NR, 0)

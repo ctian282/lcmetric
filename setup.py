@@ -4,7 +4,7 @@ from Cython.Build import cythonize
 setup(ext_modules=cythonize([
     Extension(
         "metric",
-        ["src/metric.pyx"],
+        ["cython/metric.pyx"],
         include_dirs=["/usr/include/healpix_cxx/"],
         extra_compile_args=["-O3", "-fopenmp", "-std=c++14"],
         extra_link_args=[],
@@ -12,7 +12,7 @@ setup(ext_modules=cythonize([
     ),
     Extension(
         "lensing",
-        ["src/lensing.pyx"],
+        ["cython/lensing.pyx"],
         include_dirs=["/usr/include/healpix_cxx/"],
         extra_compile_args=["-O3", "-fopenmp", "-std=c++14"],
         extra_link_args=[],
@@ -20,7 +20,7 @@ setup(ext_modules=cythonize([
     ),
     Extension(
         "clightcone_CIC",
-        ["src/lightcone_CIC.pyx"],
+        ["cython/lightcone_CIC.pyx"],
         include_dirs=["/usr/include/healpix_cxx/"],
         extra_compile_args=["-O3", "-fopenmp", "-std=c++14"],
         extra_link_args=["-lhealpix_cxx", "-lcfitsio", "-lz"],
@@ -28,13 +28,13 @@ setup(ext_modules=cythonize([
     ),
     Extension(
         "cutils",
-        ["src/utils.pyx"],
+        ["cython/utils.pyx"],
         extra_compile_args=["-O3", "-fopenmp", "-std=c++14"],
         language="c++",
     ),
     Extension(
         "cgeodesic",
-        ["src/geodesic.pyx"],
+        ["cython/geodesic.pyx"],
         include_dirs=["/usr/include/healpix_cxx/"],
         extra_compile_args=["-O3", "-fopenmp", "-std=c++14"],
         extra_link_args=["-lhealpix_cxx", "-lcfitsio", "-lz"],
@@ -42,7 +42,7 @@ setup(ext_modules=cythonize([
     ),
     Extension(
         "clcdensity",
-        ["src/lcdensity.pyx"],
+        ["cython/lcdensity.pyx"],
         include_dirs=["/usr/include/healpix_cxx/"],
         extra_compile_args=["-O3", "-fopenmp", "-std=c++14"],
         extra_link_args=["-lhealpix_cxx", "-lcfitsio", "-lz"],
