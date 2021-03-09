@@ -9,8 +9,6 @@ cdef extern from "c++/geodesic.h":
 
 # Declare the class with cdef
     cdef cppclass _Geodesic:
-        _Geodesic(real_t *Phi_in, real_t *Pi_in, real_t *Omega_in, real_t *dPi_dr_in,
-                  real_t * a_in, idx_t NR_in, real_t init_r_in, real_t final_r_in) except +
 
         _Geodesic(real_t *Phi_in, real_t *Pi_in, real_t *Omega_in, real_t *dPi_dr_in,
                   real_t * a_in, idx_t NR_in, real_t init_r_in, real_t final_r_in,
@@ -19,7 +17,6 @@ cdef extern from "c++/geodesic.h":
 
         void init_with_healpix_tars(real_t r) except +
         void shoot() except +
-
 
 
 

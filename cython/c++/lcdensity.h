@@ -52,7 +52,6 @@ public:
                                    cout("dens_debug.txt") {
         id2pos = new real_t[3*(n_part + 1)];
         id2vel = new real_t[3*(n_part + 1)];
-        //is_out = new bool[n_part];
 
         box = new real_t[3];
             for(int i = 0; i < 3; i++) box[i] = box_in[i];
@@ -154,18 +153,17 @@ public:
     }
 
     void proc_snap(real_t * pos, real_t * vel, idx_t *ids, real_t tau,
-                   real_t dtau, real_t a, real_t H)
-        {
-            if(is_first_snap == true){
-                update_pos_map(pos, vel, ids);
-                is_first_snap = false;
-            }
-            else{
-                advance_snap(pos, vel, ids, -tau + dtau, tau - dtau, dtau, a * H, a);
-                update_pos_map(pos, vel, ids);
-            }
-            //advance_snap(pos, vel, ids, -tau, tau, dtau, a * H, a);
+                   real_t dtau, real_t a, real_t H) {
+        if(is_first_snap == true){
+            update_pos_map(pos, vel, ids);
+            is_first_snap = false;
         }
+        else{
+            advance_snap(pos, vel, ids, -tau + dtau, tau - dtau, dtau, a * H, a);
+            update_pos_map(pos, vel, ids);
+        }
+        //advance_snap(pos, vel, ids, -tau, tau, dtau, a * H, a);
+    }
 
 };
 

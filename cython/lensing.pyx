@@ -21,6 +21,7 @@ class Lensing:
 
     def __init__(self, met, init_r, final_r, NR, NSIDE,
                  mode = 'ray_tracing', **kwargs):
+
         self.met = met
         self.init_r = init_r
         self.final_r = final_r

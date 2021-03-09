@@ -148,10 +148,10 @@ public:
         hp = new T_Healpix_Base<idx_t>
                 ( NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE );
 
-            ang_list = new pointing[NPIX];
-            for(int i = 0; i < NPIX; i++)
-                ang_list[i] = hp->pix2ang(i);
-        }
+        ang_list = new pointing[NPIX];
+        for(int i = 0; i < NPIX; i++)
+            ang_list[i] = hp->pix2ang(i);
+    }
 
     ~_Geodesic() {
         GEODESIC_APPLY_TO_FIELDS(RK2_FIELDS_ALL_DEL);
@@ -297,7 +297,7 @@ public:
         return p.dDAdt;
     }
 
-    real_t ddDAdt_dt(Photon &p)        {
+    real_t ddDAdt_dt(Photon &p) {
         return - dk0_dt(p) * p.dDAdt
             + 1.0 * (1 + 2 * p.Phi) *
             (p.nr * p.nr * p.dPhi_ddr + 2.0 * p.nr * p.ntheta * p.dPhi_drdtheta + 2.0 * p.nr * p.nphi * p.dPhi_drdphi
@@ -410,13 +410,13 @@ public:
 
         p.Phi_lap = Phi_s_ang_lap[c].interpolated_value(p.pt) / PW2(p.r)
                 + (2 * p.dPhi_dr + p.r * p.dPhi_ddr) / p.r ;
-            // Adding connection terms to from covariant derivatives
-            p.dPhi_ddr += 0;
-            p.dPhi_drdtheta -= p.dPhi_dtheta / p.r;
-            p.dPhi_drdphi -= p.dPhi_dphi / p.r;
-            p.dPhi_ddtheta -= -p.r * p.dPhi_dr;
-            p.dPhi_dthetadphi -= p.dPhi_dphi / tan(p.pt.theta);
-            p.dPhi_ddphi -= -p.r * PW2(sin(p.pt.theta)) * p.dPhi_dr - cos(p.pt.theta) * sin(p.pt.theta) * p.dPhi_dtheta;
+        // Adding connection terms to from covariant derivatives
+        p.dPhi_ddr += 0;
+        p.dPhi_drdtheta -= p.dPhi_dtheta / p.r;
+        p.dPhi_drdphi -= p.dPhi_dphi / p.r;
+        p.dPhi_ddtheta -= -p.r * p.dPhi_dr;
+        p.dPhi_dthetadphi -= p.dPhi_dphi / tan(p.pt.theta);
+        p.dPhi_ddphi -= -p.r * PW2(sin(p.pt.theta)) * p.dPhi_dr - cos(p.pt.theta) * sin(p.pt.theta) * p.dPhi_dtheta;
 
     }
 
@@ -437,45 +437,45 @@ public:
         p.Phi = (1.0 - weight_l) * Phi_s[c].interpolated_value(p.pt)
                 + weight_l * Phi_s[1-c].interpolated_value(p.pt);
 
-            p.dPhi_dr = (1.0 - weight_l) * Pi_s[c].interpolated_value(p.pt)
-                + weight_l * Pi_s[1-c].interpolated_value(p.pt);
+        p.dPhi_dr = (1.0 - weight_l) * Pi_s[c].interpolated_value(p.pt)
+            + weight_l * Pi_s[1-c].interpolated_value(p.pt);
 
-            p.dPhi_dtheta = (1.0 - weight_l) * Phi_s_dtheta[c].interpolated_value(p.pt)
-                + weight_l * Phi_s_dtheta[1-c].interpolated_value(p.pt);
+        p.dPhi_dtheta = (1.0 - weight_l) * Phi_s_dtheta[c].interpolated_value(p.pt)
+            + weight_l * Phi_s_dtheta[1-c].interpolated_value(p.pt);
 
-            p.dPhi_dphi = (1.0 - weight_l) * Phi_s_dphi[c].interpolated_value(p.pt)
-                + weight_l * Phi_s_dphi[1-c].interpolated_value(p.pt);
+        p.dPhi_dphi = (1.0 - weight_l) * Phi_s_dphi[c].interpolated_value(p.pt)
+            + weight_l * Phi_s_dphi[1-c].interpolated_value(p.pt);
 
-            p.Omega = (1.0 - weight_l) * Omega_s[c].interpolated_value(p.pt)
-                + weight_l * Omega_s[1-c].interpolated_value(p.pt);
+        p.Omega = (1.0 - weight_l) * Omega_s[c].interpolated_value(p.pt)
+            + weight_l * Omega_s[1-c].interpolated_value(p.pt);
 
-            // Ordinary derivatives
-            p.dPhi_ddr = (1.0 - weight_l) * Phi_s_ddr[c].interpolated_value(p.pt)
-                + weight_l * Phi_s_ddr[1-c].interpolated_value(p.pt);
+        // Ordinary derivatives
+        p.dPhi_ddr = (1.0 - weight_l) * Phi_s_ddr[c].interpolated_value(p.pt)
+            + weight_l * Phi_s_ddr[1-c].interpolated_value(p.pt);
 
-            p.dPhi_drdtheta = (1.0 - weight_l) * Phi_s_drdtheta[c].interpolated_value(p.pt)
-                + weight_l * Phi_s_drdtheta[1-c].interpolated_value(p.pt);
-            p.dPhi_drdphi = (1.0 - weight_l) * Phi_s_drdphi[c].interpolated_value(p.pt)
-                + weight_l * Phi_s_drdphi[1-c].interpolated_value(p.pt);
-            p.dPhi_ddphi = (1.0 - weight_l) * Phi_s_ddphi[c].interpolated_value(p.pt)
-                + weight_l * Phi_s_ddphi[1-c].interpolated_value(p.pt);
-            p.dPhi_ddtheta = (1.0 - weight_l) * Phi_s_ddtheta[c].interpolated_value(p.pt)
-                + weight_l * Phi_s_ddtheta[1-c].interpolated_value(p.pt);
-            p.dPhi_dthetadphi = (1.0 - weight_l) * Phi_s_dthetadphi[c].interpolated_value(p.pt)
-                + weight_l * Phi_s_dthetadphi[1-c].interpolated_value(p.pt);
+        p.dPhi_drdtheta = (1.0 - weight_l) * Phi_s_drdtheta[c].interpolated_value(p.pt)
+            + weight_l * Phi_s_drdtheta[1-c].interpolated_value(p.pt);
+        p.dPhi_drdphi = (1.0 - weight_l) * Phi_s_drdphi[c].interpolated_value(p.pt)
+            + weight_l * Phi_s_drdphi[1-c].interpolated_value(p.pt);
+        p.dPhi_ddphi = (1.0 - weight_l) * Phi_s_ddphi[c].interpolated_value(p.pt)
+            + weight_l * Phi_s_ddphi[1-c].interpolated_value(p.pt);
+        p.dPhi_ddtheta = (1.0 - weight_l) * Phi_s_ddtheta[c].interpolated_value(p.pt)
+            + weight_l * Phi_s_ddtheta[1-c].interpolated_value(p.pt);
+        p.dPhi_dthetadphi = (1.0 - weight_l) * Phi_s_dthetadphi[c].interpolated_value(p.pt)
+            + weight_l * Phi_s_dthetadphi[1-c].interpolated_value(p.pt);
 
-            p.Phi_lap = ((1.0-weight_l) * Phi_s_ang_lap[c].interpolated_value(p.pt)
-                         + weight_l * Phi_s_ang_lap[1-c].interpolated_value(p.pt))
-                / PW2(p.r)
-                + (2 * p.dPhi_dr + p.r * p.dPhi_ddr) / p.r ;
+        p.Phi_lap = ((1.0-weight_l) * Phi_s_ang_lap[c].interpolated_value(p.pt)
+                     + weight_l * Phi_s_ang_lap[1-c].interpolated_value(p.pt))
+            / PW2(p.r)
+            + (2 * p.dPhi_dr + p.r * p.dPhi_ddr) / p.r ;
 
-            // Adding connection terms to from covariant derivatives
-            p.dPhi_ddr += 0;
-            p.dPhi_drdtheta -= p.dPhi_dtheta / p.r;
-            p.dPhi_drdphi -= p.dPhi_dphi / p.r;
-            p.dPhi_ddtheta -= -p.r * p.dPhi_dr;
-            p.dPhi_dthetadphi -= p.dPhi_dphi / tan(p.pt.theta);
-            p.dPhi_ddphi -= -p.r * PW2(sin(p.pt.theta)) * p.dPhi_dr - cos(p.pt.theta) * sin(p.pt.theta) * p.dPhi_dtheta;
+        // Adding connection terms to from covariant derivatives
+        p.dPhi_ddr += 0;
+        p.dPhi_drdtheta -= p.dPhi_dtheta / p.r;
+        p.dPhi_drdphi -= p.dPhi_dphi / p.r;
+        p.dPhi_ddtheta -= -p.r * p.dPhi_dr;
+        p.dPhi_dthetadphi -= p.dPhi_dphi / tan(p.pt.theta);
+        p.dPhi_ddphi -= -p.r * PW2(sin(p.pt.theta)) * p.dPhi_dr - cos(p.pt.theta) * sin(p.pt.theta) * p.dPhi_dtheta;
     }
 
 

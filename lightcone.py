@@ -1,6 +1,5 @@
 import numpy as npy
 import scipy as scpy
-import pickle as pl
 
 from nbodykit.source.catalog import Gadget1Catalog
 from nbodykit.source.catalog import CSVCatalog

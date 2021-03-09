@@ -74,7 +74,8 @@ void kappa_deposit(real_t *particles, real_t *a, real_t *origin,
 
 }
 
-void CIC_deposit(real_t *particles, real_t *origin, real_t *delta, real_t *vw, real_t *counts,
+void CIC_deposit(real_t *particles, real_t *origin, real_t *delta,
+                 real_t *vw, real_t *counts,
                  idx_t nparticles, real_t count_density,
                  real_t max_r, real_t min_r, idx_t NR, idx_t NSIDE, idx_t vx_is_weight)
 {

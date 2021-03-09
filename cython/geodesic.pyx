@@ -11,7 +11,6 @@ cimport numpy as npy
 
 cimport cgeodesic
 from libcpp cimport bool
-#from cgeodesic cimport _Geodesic
 
 cdef class Geodesic:
     cdef _Geodesic *c_geo
