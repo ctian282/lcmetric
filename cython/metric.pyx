@@ -1,7 +1,5 @@
 import numpy as npy
 import healpy as hp
-#import numexpr as ne
-#import numba as nb
 
 import lcmetric.utils as ut
 from libcpp cimport bool
@@ -23,8 +21,8 @@ cdef relax_Phi(int npix, double complex[::1] Phi_p1, \
                double Hubble, double Hubble_0, \
                double Hubble_dt, double Omega_m, double dtau):
     cdef Py_ssize_t p
-    #cdef double complex est_f
-    for p in range(npix):
+    for p in prange(npix, nogil=True):
+    #for p in range(npix):
         res[p] = ( ( ((-2 / tau + 2 * Hubble) * Pi[p] \
                      + 1.5 * Hubble_0**2 * Omega_m / a * delta[p]\
                      + 3 * Hubble_0**2 * Omega_m / a * vw[p]\
@@ -44,7 +42,8 @@ cdef dPi_dt(int npix, double complex [::1] Phi, double complex[::1] Phi_p1, \
             double Hubble, double Hubble_0, \
             double Hubble_dt, double Omega_m, double dtau):
         cdef Py_ssize_t p
-        for p in range(npix):
+        for p in prange(npix, nogil=True):
+        #for p in range(npix):
             res[p] = -( (Phi_p1[p] + Phi_m1[p] - 2 * Phi[p]) / dtau**2 \
                        ) - 3 * Hubble * \
                        ( - (Phi_p1[p] - Phi_m1[p]) / (2*dtau) \
@@ -62,7 +61,8 @@ cdef dPi_dt_upper_bd(int npix, double complex [::1] Phi,
             double Hubble, double Hubble_0, \
             double Hubble_dt, double Omega_m, double dtau):
         cdef Py_ssize_t p
-        for p in range(npix):
+        for p in prange(npix, nogil=True):
+        #for p in range(npix):
             res[p] = -( (Phi[p] + Phi_m2[p] - 2 * Phi_m1[p]) / dtau**2 \
                        ) - 3 * Hubble * \
                        ( - (Phi[p] - Phi_m1[p]) / (dtau) \
@@ -80,7 +80,8 @@ cdef dPi_dt_lower_bd(int npix, double complex [::1] Phi,
                      double Hubble, double Hubble_0, \
                      double Hubble_dt, double Omega_m, double dtau):
         cdef Py_ssize_t p
-        for p in range(npix):
+        for p in prange(npix, nogil=True):
+        #for p in range(npix):
             res[p] = -( (Phi[p] + Phi_p2[p] - 2 * Phi_p1[p]) / dtau**2 \
                        ) - 3 * Hubble * \
                        (  (Phi[p] - Phi_p1[p]) / (dtau) \
