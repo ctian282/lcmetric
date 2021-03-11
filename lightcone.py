@@ -37,15 +37,22 @@ class Lightcone:
         self.L_unit = 3e5
         self.hL_unit = self.L_unit * cosmo_paras['h']
 
+        # setting multigrid parameters
+        alm_iter = keyws.get('alm_iter', 50)
+        depth = keyws.get('depth', 5)
+        n_vcycles = keyws.get('n_vcycles', 100)
+        npre = keyws.get('npre', 16)
+        npost = keyws.get('npost', 16)
+        lmax = keyws.get('lmax', 2 * NSIDE - 1)
         self.met = met.Metric(NSIDE,
                               epsilon=1e-12,
                               grid='healpy',
-                              alm_iter=50,
-                              depth=5,
-                              n_vcycles=100,
-                              npre=16,
-                              npost=16,
-                              lmax=2 * NSIDE - 1,
+                              alm_iter=alm_iter,
+                              depth=depth,
+                              n_vcycles=n_vcycles,
+                              npre=npre,
+                              npost=npost,
+                              lmax=lmax,
                               verbose=False)
 
     # 1/H(z)
@@ -324,7 +331,8 @@ class LightconeFromCone(Lightcone):
                  Phi_zel_path=None,
                  cone_type='CSV',
                  snap_type='Gadget1',
-                 lensing_kappa=False):
+                 lensing_kappa=False,
+                 **kwargs):
         """Initializing lightcone object from particle cone data.
 
         Parameters:
@@ -373,7 +381,7 @@ class LightconeFromCone(Lightcone):
         lensing convergence
         """
         Lightcone.__init__(self, origin, cosmo_paras, L_snap, N_snap, NR,
-                           NSIDE)
+                           NSIDE, **kwargs)
 
         self.init_z = init_z
         self.final_z = final_z
@@ -604,7 +612,8 @@ class LightconeFromSnaps(Lightcone):
                  snap_type='Gadget1',
                  NR_is_N_snap=False,
                  lensing_kappa=False,
-                 need_reduce=False):
+                 need_reduce=False,
+                 **kwargs):
         """Initializing lightcone object from particle cone data.
 
         Parameters:
@@ -656,7 +665,7 @@ class LightconeFromSnaps(Lightcone):
         """
 
         Lightcone.__init__(self, origin, cosmo_paras, L_snap, N_snap, NR,
-                           NSIDE)
+                           NSIDE, **kwargs)
 
         self.zel_z = zel_z
 

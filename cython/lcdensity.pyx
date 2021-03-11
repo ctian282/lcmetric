@@ -51,17 +51,18 @@ cdef class DensFromSnaps:
 
         cdef real_t [:,::1] pos, vel
         cdef idx_t [:] IDs
-        #for fi in range(len(self.files) - 1, -1, 0):
 
         z = self.files[fi].attrs['Redshift']
         a = 1 / (1 + z)
         H = ut.H(z, self.cosmo_paras['h']*100,
                  self.cosmo_paras['Omega_m'], self.cosmo_paras['Omega_L'])
-        pos = npy.ascontiguousarray(self.files[fi]['Position'] / self.L_unit, dtype=npy.double)
-        vel = npy.ascontiguousarray(self.files[fi]['GadgetVelocity'] * (npy.sqrt(a) / (3e5)),
-                                    dtype=npy.double)
+        pos = npy.ascontiguousarray(
+            self.files[fi]['Position'] / self.L_unit, dtype=npy.double)
+        vel = npy.ascontiguousarray(
+            self.files[fi]['GadgetVelocity'] * (npy.sqrt(a) / (3e5)),
+            dtype=npy.double)
         IDs = npy.ascontiguousarray(self.files[fi]['ID'])
-        #print(str(z)+' '+str(a)+' '+str(H)+' '+str(tau)+' '+str(dtau))
+
         self.c_dens.proc_snap(
             &pos[0, 0], &vel[0, 0], &IDs[0],
             tau, dtau, a, H)

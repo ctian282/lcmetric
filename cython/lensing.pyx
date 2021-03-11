@@ -21,7 +21,20 @@ class Lensing:
 
     def __init__(self, met, init_r, final_r, NR, NSIDE,
                  mode = 'ray_tracing', **kwargs):
+        """
+        met: Metric class
 
+        init_r: float
+        Initial co-moving radius in unit hL_unit
+
+        final_r: float
+        Final co-moving radius in unit hL_unit
+
+        NSIDE: int
+
+        mode: str
+        'ray_tracing' mode; 'born_approx_lc'; 'born_approx_snap'
+        """
         self.met = met
         self.init_r = init_r
         self.final_r = final_r
@@ -30,7 +43,7 @@ class Lensing:
         self.NPIX = 12 * self.NSIDE**2
         self.mode = mode
 
-        if(mode == 'ray_tracing'):
+        if(mode is 'ray_tracing'):
             try:
                 ang_epsilon = kwargs['ang_epsilon']
             except:
@@ -132,6 +145,7 @@ class Lensing:
         res = temp[0:lower_r_bin+1, :].sum(axis=0)
         lw = r - lower_r_bin * ((self.init_r - self.final_r) / self.NR)
         res += temp[lower_r_bin] * (1 - lw) + temp[lower_r_bin + 1] * lw;
+        self.kappa_bins = temp
         return res
 
     def calculate(self):

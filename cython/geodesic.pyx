@@ -3,7 +3,6 @@
 
 import numpy as npy
 import healpy as hp
-import numexpr as ne
 
 import lcmetric.utils as ut
 
