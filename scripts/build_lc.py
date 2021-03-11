@@ -119,7 +119,8 @@ lc_snaps_relx_64 = lc.LightconeFromSnaps(snaps_path,
                                          zel_z,
                                          zel_snap_path,
                                          snap_type='Gadget1',
-                                         lensing_kappa=True)
+                                         lensing_kappa=True,
+                                         chunk=24000000)
 lc_snaps_relx_64.build_lcmetric()
 dl_dump(path, 'lc_snaps_relx_64', lc_snaps_relx_64)
 del lc_snaps_relx_64
@@ -138,7 +139,8 @@ lc_snaps_relx_16 = lc.LightconeFromSnaps(snaps_path,
                                          zel_snap_path,
                                          snap_type='Gadget1',
                                          lensing_kappa=True,
-                                         need_reduce=True)
+                                         need_reduce=True,
+                                         chunk=24000000)
 lc_snaps_relx_16.build_lcmetric()
 dl_dump(path, 'lc_snaps_relx_16', lc_snaps_relx_16)
 del lc_snaps_relx_16
