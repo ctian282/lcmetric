@@ -42,7 +42,8 @@ cdef class DensFromSnaps:
     def __dealloc__(self):
         del self.c_dens
 
-    def proc_snap(self, int fi, real_t tau, real_t dtau, pre_clear = False):
+    def proc_snap(self, int fi, real_t tau, real_t dtau,
+                  pre_clear=False, chunk=2**62):
 
         if(fi >= len(self.files) or fi < 0): return False
 

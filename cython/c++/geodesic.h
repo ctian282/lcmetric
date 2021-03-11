@@ -66,9 +66,10 @@ public:
     // initial angular corrections
     real_t *ang_corrs, *d_diff_ang, *d_diff_tar_ang, *diff_s_ang;
     real_t max_tar_r;
-    // lower radial bin for tars
+    // lower radial bin for tars, is also used
+    // as indicator to mark if a photon cannot be traced anymore,
+    // usually this happens when photon is very close to the pole
     idx_t *tars_lower_bins;
-
 
 
     pointing *ang_list;
