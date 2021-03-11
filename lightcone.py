@@ -858,6 +858,8 @@ class LightconeFromSnaps(Lightcone):
                 print(str(fi) + ' ' + str(tau) + ' ' + str(dtau) + ' ' +
                       str(p_num),
                       flush=True)
+                if (p_num == 0):
+                    continue
                 pdata = npy.array(self.snap_den.get_pdata()).reshape(p_num, 6)
 
                 if (self.zel_z is not None):
