@@ -26,7 +26,7 @@ class _DensFromSnaps
 {
 public:
 
-    idx_t n_part;
+    idx_t n_tot_part;
     int n_obs;
 
     int max_move_x, max_move_y, max_move_z;
@@ -35,8 +35,6 @@ public:
     // mapping particles' ID to positions
     real_t *id2pos, *id2vel, *obs, *box;
 
-    bool is_first_snap;
-
     bool *is_out;
 
     std::vector<real_t> lc_p;
@@ -44,14 +42,13 @@ public:
 
     std::ofstream cout;
 
-    _DensFromSnaps(idx_t n_part_in, real_t * obs_in, real_t init_r_in,
-                   real_t *box_in):n_part(n_part_in),
+    _DensFromSnaps(idx_t n_tot_part_in, real_t * obs_in, real_t init_r_in,
+                   real_t *box_in):n_tot_part(n_tot_part_in),
                                    init_r(init_r_in),
                                    obs(obs_in),
-                                   is_first_snap(true),
                                    cout("dens_debug.txt") {
-        id2pos = new real_t[3*(n_part + 1)];
-        id2vel = new real_t[3*(n_part + 1)];
+        id2pos = new real_t[3*(n_tot_part + 1)];
+        id2vel = new real_t[3*(n_tot_part + 1)];
 
         box = new real_t[3];
             for(int i = 0; i < 3; i++) box[i] = box_in[i];
@@ -68,14 +65,14 @@ public:
     }
 
     void advance_snap(real_t *pos, real_t *vel, idx_t *ids, real_t lc_r,
-                      real_t tau, real_t dtau, real_t a_dot, real_t a) {
+                      real_t tau, real_t dtau, real_t a_dot, real_t a, idx_t np) {
 
         max_move_x = ceil(2*lc_r / box[0]);
         max_move_y = ceil(2*lc_r / box[1]);
         max_move_z = ceil(2*lc_r / box[2]);
 
 #pragma omp parallel for
-        for(idx_t i = 0; i < n_part; i ++){
+        for(idx_t i = 0; i < np; i ++){
             for(int mx = -max_move_x; mx <= max_move_x; mx++){
                 for(int my = - max_move_y; my <= max_move_y; my++){
                     for(int mz = -max_move_z; mz <= max_move_z; mz++){
@@ -133,10 +130,10 @@ public:
         }
     }
 
-    void update_pos_map(real_t * pos, real_t * vel, idx_t *ids){
+    void update_pos_map(real_t * pos, real_t * vel, idx_t *ids, idx_t np){
 
-        for(idx_t i = 0; i < n_part; i++){
-            if( ids[i] > n_part){
+        for(idx_t i = 0; i < np; i++){
+            if( ids[i] > n_tot_part){
                 cout<<"ERROR! The id is tool large!";
                 throw(-1);
             }
@@ -153,16 +150,25 @@ public:
     }
 
     void proc_snap(real_t * pos, real_t * vel, idx_t *ids, real_t tau,
-                   real_t dtau, real_t a, real_t H) {
+                   real_t dtau, real_t a, real_t H, bool is_first_snap) {
         if(is_first_snap == true){
-            update_pos_map(pos, vel, ids);
-            is_first_snap = false;
+            update_pos_map(pos, vel, ids, n_tot_part);
         }
         else{
-            advance_snap(pos, vel, ids, -tau + dtau, tau - dtau, dtau, a * H, a);
-            update_pos_map(pos, vel, ids);
+            advance_snap(pos, vel, ids, -tau + dtau, tau - dtau, dtau, a * H, a, n_tot_part);
+            update_pos_map(pos, vel, ids, n_tot_part);
         }
-        //advance_snap(pos, vel, ids, -tau, tau, dtau, a * H, a);
+    }
+
+    void proc_snap_chunk(real_t * pos, real_t * vel, idx_t *ids, real_t tau,
+                         real_t dtau, real_t a, real_t H, idx_t np, bool is_first_snap) {
+        if(is_first_snap == true){
+            update_pos_map(pos, vel, ids, np);
+        }
+        else{
+            advance_snap(pos, vel, ids, -tau + dtau, tau - dtau, dtau, a * H, a, np);
+            update_pos_map(pos, vel, ids, np);
+        }
     }
 
 };

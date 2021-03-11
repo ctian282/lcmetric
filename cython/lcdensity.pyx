@@ -25,6 +25,8 @@ cdef class DensFromSnaps:
 
     cdef real_t pre_tau
 
+    cdef bool is_first_snap
+
     def __cinit__(self, files,
                   real_t[:] origin, real_t L_snap, idx_t N_part, real_t init_r,
                   cosmo_paras, real_t L_unit):
@@ -38,12 +40,22 @@ cdef class DensFromSnaps:
         cdef real_t[:] box = npy.array([L_snap, L_snap, L_snap])
 
         self.c_dens = new _DensFromSnaps(N_part, &origin[0], init_r, &box[0])
+        self.is_first_snap = True
 
     def __dealloc__(self):
         del self.c_dens
 
+    def proc_snap_chunk(self, real_t[:, ::1] pos, real_t[:, ::1] vel,
+                        idx_t[:] IDs, real_t tau, real_t dtau):
+
+        self.c_dens.proc_snap_chunk(
+            &pos[0, 0], &vel[0, 0], &IDs[0],
+            tau, dtau, 0, 0, pos.shape[0], self.is_first_snap)
+
+
+
     def proc_snap(self, int fi, real_t tau, real_t dtau,
-                  pre_clear=False, chunk=2**62):
+                  pre_clear=False):
 
         if(fi >= len(self.files) or fi < 0): return False
 
@@ -57,6 +69,7 @@ cdef class DensFromSnaps:
         a = 1 / (1 + z)
         H = ut.H(z, self.cosmo_paras['h']*100,
                  self.cosmo_paras['Omega_m'], self.cosmo_paras['Omega_L'])
+
         pos = npy.ascontiguousarray(
             self.files[fi]['Position'] / self.L_unit, dtype=npy.double)
         vel = npy.ascontiguousarray(
@@ -66,9 +79,13 @@ cdef class DensFromSnaps:
 
         self.c_dens.proc_snap(
             &pos[0, 0], &vel[0, 0], &IDs[0],
-            tau, dtau, a, H)
+            tau, dtau, a, H, self.is_first_snap)
 
+        self.is_first_snap = False
         return True
+
+    def not_first_snap(self):
+        self.is_first_snap = False
 
     def clear_lc(self):
         self.c_dens.clear_lc()

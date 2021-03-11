@@ -613,6 +613,7 @@ class LightconeFromSnaps(Lightcone):
                  NR_is_N_snap=False,
                  lensing_kappa=False,
                  need_reduce=False,
+                 chunk=2**62,
                  **kwargs):
         """Initializing lightcone object from particle cone data.
 
@@ -703,11 +704,13 @@ class LightconeFromSnaps(Lightcone):
         if (init_snap_i < 0):
             init_snap_i += self.n_snaps
         print("Initial snap is set at redshift " +
-              str(files[init_snap_i].attrs['Redshift']))
+              str(files[init_snap_i].attrs['Redshift']),
+              flush=True)
         if (final_snap_i < 0):
             final_snap_i += self.n_snaps
         print("Final snap is set at redshift " +
-              str(files[final_snap_i].attrs['Redshift']))
+              str(files[final_snap_i].attrs['Redshift']),
+              flush=True)
 
         self.init_z = files[init_snap_i].attrs['Redshift']
         self.final_z = files[final_snap_i].attrs['Redshift']
@@ -726,7 +729,8 @@ class LightconeFromSnaps(Lightcone):
             """
             self.NR = init_snap_i - final_snap_i + 1
             print('Setting the radial resolution NR as ' + str(self.NR) +
-                  'since we do want NR is N_snap')
+                  'since we do want NR is N_snap',
+                  flush=True)
 
             self.a = npy.array([1/(1+scpy.optimize.minimize_scalar(
                 self.inverse_Hint, args=(self.to_r(n, self.NR))).x) \
@@ -748,7 +752,8 @@ class LightconeFromSnaps(Lightcone):
                     ut.inverse_Lap(rf, self.L_snap, self.N_snap))
                 r = scpy.integrate.quad(self.Hint, 0,
                                         files[fi].attrs['Redshift'])[0]
-                print(str(ni) + ' ' + str(r) + ' ' + str(self.a[ni]))
+                print(str(ni) + ' ' + str(r) + ' ' + str(self.a[ni]),
+                      flush=True)
                 self.Phi[ni] = utC.interp(snap, rf.BoxSize/rf.Nmesh,
                     npy.ascontiguousarray([ [\
                     r * npy.sin(self.theta_list[i]) * npy.cos(self.phi_list[i]) + origin[0],\
@@ -823,41 +828,62 @@ class LightconeFromSnaps(Lightcone):
             else:
                 dtau = 0
 
-            #print(str(tau) + ' ' + str(dtau))
-            state = self.snap_den.proc_snap(fi, tau, dtau)
-            if (fi == self.n_snaps - 1):
-                continue
+            z = files[fi].attrs['Redshift']
+            a = 1 / (1 + z)
 
-            if (state is False):
-                raise ValueError('Reading snapshot No. ' + str(fi) +
-                                 ' failed!')
+            # Rechunking data
+            files[fi]['Position'] = files[fi]['Position'].rechunk(chunk)
+            files[fi]['GadgetVelocity'] = files[fi]['GadgetVelocity'].rechunk(
+                chunk)
+            files[fi]['ID'] = files[fi]['ID'].rechunk(chunk)
 
-            p_num = int(self.snap_den.p_num() / 6)
-            self.tot_p_num += p_num
-            print(str(tau) + ' ' + str(dtau) + ' ' + str(p_num))
-            pdata = npy.array(self.snap_den.get_pdata()).reshape(p_num, 6)
+            for p, v, i, in zip(files[fi]['Position'].partitions,
+                                files[fi]['GadgetVelocity'].partitions,
+                                files[fi]['ID'].partitions):
+                pos = npy.ascontiguousarray(p / self.hL_unit, dtype=npy.double)
+                vel = npy.ascontiguousarray(v * (npy.sqrt(a) / (3e5)),
+                                            dtype=npy.double)
+                IDs = npy.ascontiguousarray(i)
 
-            if (self.zel_z is not None):
-                pdata += \
-                    utC.interp(rf_i0, self.dx,
-                               npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
-                    * [1, 0, 0, 0, 0, 0] +\
-                    utC.interp(rf_i1, self.dx,
-                               npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
-                    * [0, 1, 0, 0, 0, 0] +\
-                    utC.interp(rf_i2, self.dx,
-                               npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
-                    * [0, 0, 1, 0, 0, 0]
-            lc_CIC.deposit(pdata, self.origin, self.delta, count_density,
-                           self.vw, self.counts, self.init_r, self.final_r,
-                           self.NR, self.NSIDE, 0)
-            if (lensing_kappa is True):
-                lc_CIC.lensing_kappa_deposit(pdata, self.a, self.origin,
-                                             self.kappa1, self.kappa2,
-                                             self.init_r, self.final_r,
-                                             self.NR, self.NSIDE)
+                state = self.snap_den.proc_snap_chunk(pos, vel, IDs, tau, dtau)
+                if (fi == self.n_snaps - 1):
+                    continue
 
-            self.snap_den.clear_lc()
+                if (state is False):
+                    raise ValueError('Reading snapshot No. ' + str(fi) +
+                                     ' failed!')
+
+                p_num = int(self.snap_den.p_num() / 6)
+                self.tot_p_num += p_num
+                print(str(fi) + ' ' + str(tau) + ' ' + str(dtau) + ' ' +
+                      str(p_num),
+                      flush=True)
+                pdata = npy.array(self.snap_den.get_pdata()).reshape(p_num, 6)
+
+                if (self.zel_z is not None):
+                    pdata += \
+                        utC.interp(rf_i0, self.dx,
+                                   npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
+                                   * [1, 0, 0, 0, 0, 0] +\
+                        utC.interp(rf_i1, self.dx,
+                                   npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
+                                   * [0, 1, 0, 0, 0, 0] +\
+                        utC.interp(rf_i2, self.dx,
+                                   npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
+                                   * [0, 0, 1, 0, 0, 0]
+                lc_CIC.deposit(pdata, self.origin, self.delta, count_density,
+                               self.vw, self.counts, self.init_r, self.final_r,
+                               self.NR, self.NSIDE, 0)
+                if (lensing_kappa is True):
+                    lc_CIC.lensing_kappa_deposit(pdata, self.a, self.origin,
+                                                 self.kappa1, self.kappa2,
+                                                 self.init_r, self.final_r,
+                                                 self.NR, self.NSIDE)
+
+                self.snap_den.clear_lc()
+
+            # Change the flag to non-first snap
+            self.snap_den.not_first_snap()
 
         self.vw /= self.counts
         self.vw = npy.nan_to_num(self.vw)
@@ -866,4 +892,3 @@ class LightconeFromSnaps(Lightcone):
                                  self.Phi_i, self.Pi_i, self.cosmo_paras,
                                  self.final_r, self.Phi_f)
         del self.snap_den
-        del files
