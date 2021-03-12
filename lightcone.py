@@ -884,6 +884,7 @@ class LightconeFromSnaps(Lightcone):
 
                 self.snap_den.clear_lc()
 
+            del files[fi]
             # Change the flag to non-first snap
             self.snap_den.not_first_snap()
 
