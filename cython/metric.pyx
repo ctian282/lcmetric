@@ -695,8 +695,8 @@ class Metric:
             self.sols[field] = npy.zeros((self.Ntau + 1, self.Npix))
 
 
-        self.matter['delta'] = delta_in[0:self.Ntau+1].copy()
-        self.matter['vw'] = vw_in[0:self.Ntau+1].copy()
+        self.matter['delta'] = delta_in[0:self.Ntau+1]
+        self.matter['vw'] = vw_in[0:self.Ntau+1]
         # Need to substract extra 2 padding grid
 
 
@@ -735,3 +735,8 @@ class Metric:
         # to maintain smoothness when caclulating time derivatives.
         self.sols['Phi'] = self.to_real(self.Phi_hier[0])
         self.sols['Pi'] = self.to_real(self.Pi_hier[0])
+
+        del self.rl_hier
+        del self.rhs_hier
+        del self.Phi_hier
+        del self.Pi_hier

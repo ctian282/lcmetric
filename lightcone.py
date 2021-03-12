@@ -198,7 +198,7 @@ class LightconeFromConePhi(Lightcone):
             rf_i2 = npy.ascontiguousarray(
                 ut.inverse_derv(Phi_snap_I, L_snap, N_snap, 2))
 
-        self.delta, self.vw, self.counts, self.met.sols['Phi'] = \
+        self.delta, self.vw, counts, self.met.sols['Phi'] = \
             self.read_lc_density_phi(cone_path, cone_type, rf_i0, rf_i1, rf_i2)
 
         for step in range(self.NR + 1):
@@ -441,7 +441,7 @@ class LightconeFromCone(Lightcone):
                 ut.inverse_derv(Phi_snap_I, L_snap, N_snap, 2))
 
         # reading light-cone
-        self.delta, self.vw, self.counts = \
+        self.delta, self.vw, counts = \
             self.read_lc_density(cone_path, cone_type, rf_i0, rf_i1, rf_i2,
                                  lensing_kappa=lensing_kappa)
 
@@ -680,7 +680,7 @@ class LightconeFromSnaps(Lightcone):
         import os
         for i in range(0, len(t), n_threads):
             self.names.append(
-                os.path.commonprefix(t[i:i + n_threads]) + '[0-9]')
+                os.path.commonprefix(t[i:i + n_threads]) + '[0-9]*')
 
         if (need_reduce is True):
             self.names = self.names[1::4]
@@ -807,7 +807,7 @@ class LightconeFromSnaps(Lightcone):
         self.delta = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
         self.delta.fill(-1)
         self.vw = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
-        self.counts = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
+        counts = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
         count_density = 1 / (self.L_snap / self.N_snap)**3 \
             / (self.N_snap**3 / self.N_snap_part)
         self.tot_p_num = 0
@@ -874,7 +874,7 @@ class LightconeFromSnaps(Lightcone):
                                    npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
                                    * [0, 0, 1, 0, 0, 0]
                 lc_CIC.deposit(pdata, self.origin, self.delta, count_density,
-                               self.vw, self.counts, self.init_r, self.final_r,
+                               self.vw, counts, self.init_r, self.final_r,
                                self.NR, self.NSIDE, 0)
                 if (lensing_kappa is True):
                     lc_CIC.lensing_kappa_deposit(pdata, self.a, self.origin,
@@ -887,7 +887,7 @@ class LightconeFromSnaps(Lightcone):
             # Change the flag to non-first snap
             self.snap_den.not_first_snap()
 
-        self.vw /= self.counts
+        self.vw /= counts
         self.vw = npy.nan_to_num(self.vw)
 
         self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
