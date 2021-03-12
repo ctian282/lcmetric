@@ -760,7 +760,7 @@ class LightconeFromSnaps(Lightcone):
                     r * npy.sin(self.theta_list[i]) * npy.sin(self.phi_list[i]) + origin[1],\
                     r * npy.cos(self.theta_list[i]) + origin[2]]  \
                     for i in range(self.NPIX)]))
-
+                #del files[fi]
             self.met.sols['Phi'] = self.Phi
             return
 
@@ -799,7 +799,7 @@ class LightconeFromSnaps(Lightcone):
 
         self.N_snap_part = files[0]['Position'].shape[0]
 
-        self.snap_den = dens.DensFromSnaps(files, origin, self.L_snap,
+        self.snap_den = dens.DensFromSnaps(origin, self.L_snap,
                                            files[0]['Position'].shape[0],
                                            self.init_r, self.cosmo_paras,
                                            self.hL_unit)
@@ -884,7 +884,6 @@ class LightconeFromSnaps(Lightcone):
 
                 self.snap_den.clear_lc()
 
-            del files[fi]
             # Change the flag to non-first snap
             self.snap_den.not_first_snap()
 

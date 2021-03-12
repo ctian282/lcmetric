@@ -4,7 +4,7 @@ import gc
 import sys
 
 args = sys.argv[1:]
-sys.path.append(args[0])
+sys.path.append('../../')
 
 import lcmetric
 import lcmetric.lightcone as lc
@@ -46,7 +46,7 @@ L_snap = 1024 / cosmo_paras['h'] / L_unit
 
 origin = npy.array([0, 0, 0.0])
 NR = 1024
-NSIDE = 1024
+NSIDE = 512
 
 # Working directory path
 path = args[1]
@@ -69,40 +69,26 @@ print(zel_snap_path)
 print(lc_path)
 print(n_threads)
 
-lc_snaps_64 = lc.LightconeFromSnaps(snaps_path,
-                                    n_threads,
-                                    origin,
-                                    cosmo_paras,
-                                    L_snap,
-                                    N_snap,
-                                    -2,
-                                    1,
-                                    NR,
-                                    NSIDE,
-                                    zel_z,
-                                    zel_snap_path,
-                                    snap_type='Gadget1',
-                                    NR_is_N_snap=True)
-dl_dump(path, 'lc_snaps_64', lc_snaps_64)
-del lc_snaps_64
-
-lc_snaps_16 = lc.LightconeFromSnaps(snaps_path,
-                                    n_threads,
-                                    origin,
-                                    cosmo_paras,
-                                    L_snap,
-                                    N_snap,
-                                    -2,
-                                    0,
-                                    NR,
-                                    NSIDE,
-                                    zel_z,
-                                    zel_snap_path,
-                                    snap_type='Gadget1',
-                                    NR_is_N_snap=True,
-                                    need_reduce=True)
-dl_dump(path, 'lc_snaps_16', lc_snaps_16)
-del lc_snaps_16
+lc_snaps_relx_16 = lc.LightconeFromSnaps(snaps_path,
+                                         n_threads,
+                                         origin,
+                                         cosmo_paras,
+                                         L_snap,
+                                         N_snap,
+                                         -2,
+                                         0,
+                                         NR,
+                                         NSIDE,
+                                         zel_z,
+                                         zel_snap_path,
+                                         snap_type='Gadget1',
+                                         lensing_kappa=True,
+                                         need_reduce=True,
+                                         chunk=24000000)
+dl_dump(path, 'lc_snaps_relx_16', lc_snaps_relx_16)
+lc_snaps_relx_16.build_lcmetric()
+dl_dump(path, 'lc_snaps_relx_16_relx', lc_snaps_relx_16)
+del lc_snaps_relx_16
 
 gc.collect()
 
@@ -121,28 +107,7 @@ lc_snaps_relx_64 = lc.LightconeFromSnaps(snaps_path,
                                          snap_type='Gadget1',
                                          lensing_kappa=True,
                                          chunk=24000000)
-lc_snaps_relx_64.build_lcmetric()
 dl_dump(path, 'lc_snaps_relx_64', lc_snaps_relx_64)
+lc_snaps_relx_64.build_lcmetric()
+dl_dump(path, 'lc_snaps_relx_64_relx', lc_snaps_relx_64)
 del lc_snaps_relx_64
-
-lc_snaps_relx_16 = lc.LightconeFromSnaps(snaps_path,
-                                         n_threads,
-                                         origin,
-                                         cosmo_paras,
-                                         L_snap,
-                                         N_snap,
-                                         -2,
-                                         0,
-                                         NR,
-                                         NSIDE,
-                                         zel_z,
-                                         zel_snap_path,
-                                         snap_type='Gadget1',
-                                         lensing_kappa=True,
-                                         need_reduce=True,
-                                         chunk=24000000)
-lc_snaps_relx_16.build_lcmetric()
-dl_dump(path, 'lc_snaps_relx_16', lc_snaps_relx_16)
-del lc_snaps_relx_16
-
-gc.collect()

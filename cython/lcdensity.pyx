@@ -16,8 +16,8 @@ from libcpp.vector cimport vector
 cdef class DensFromSnaps:
 
     cdef _DensFromSnaps *c_dens
-    cdef n_snaps
-    cdef list files
+    #cdef n_snaps
+    #cdef list files
     cdef dict cosmo_paras
 
     cdef real_t L_snap, L_unit
@@ -27,15 +27,13 @@ cdef class DensFromSnaps:
 
     cdef bool is_first_snap
 
-    def __cinit__(self, files,
+    def __cinit__(self,
                   real_t[:] origin, real_t L_snap, idx_t N_part, real_t init_r,
                   cosmo_paras, real_t L_unit):
         self.cosmo_paras = cosmo_paras
         self.L_snap = L_snap
         self.N_part = N_part
         self.L_unit = L_unit
-        self.n_snaps = len(files)
-        self.files = files
 
         cdef real_t[:] box = npy.array([L_snap, L_snap, L_snap])
 
@@ -52,37 +50,6 @@ cdef class DensFromSnaps:
             &pos[0, 0], &vel[0, 0], &IDs[0],
             tau, dtau, 0, 0, pos.shape[0], self.is_first_snap)
 
-
-
-    def proc_snap(self, int fi, real_t tau, real_t dtau,
-                  pre_clear=False):
-
-        if(fi >= len(self.files) or fi < 0): return False
-
-        if(pre_clear is True):
-            self.c_dens.clear_lc()
-
-        cdef real_t [:,::1] pos, vel
-        cdef idx_t [:] IDs
-
-        z = self.files[fi].attrs['Redshift']
-        a = 1 / (1 + z)
-        H = ut.H(z, self.cosmo_paras['h']*100,
-                 self.cosmo_paras['Omega_m'], self.cosmo_paras['Omega_L'])
-
-        pos = npy.ascontiguousarray(
-            self.files[fi]['Position'] / self.L_unit, dtype=npy.double)
-        vel = npy.ascontiguousarray(
-            self.files[fi]['GadgetVelocity'] * (npy.sqrt(a) / (3e5)),
-            dtype=npy.double)
-        IDs = npy.ascontiguousarray(self.files[fi]['ID'])
-
-        self.c_dens.proc_snap(
-            &pos[0, 0], &vel[0, 0], &IDs[0],
-            tau, dtau, a, H, self.is_first_snap)
-
-        self.is_first_snap = False
-        return True
 
     def not_first_snap(self):
         self.is_first_snap = False
