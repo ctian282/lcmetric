@@ -43,5 +43,9 @@ void _interp(real_t *d, real_t *dx, idx_t nx, idx_t ny, idx_t nz,
 void _test_openmp()
 {
     std::ofstream cout("omp_num.txt");
-    cout<<"No. of threads is "<<omp_get_num_threads()<<std::endl;
+    omp_set_dynamic(0);
+#pragma omp parallel
+    {
+        cout<<"No. of threads is "<<omp_get_num_threads()<<std::endl;
+    }
 }
