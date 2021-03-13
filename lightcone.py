@@ -891,6 +891,7 @@ class LightconeFromSnaps(Lightcone):
         self.vw /= counts
         self.vw = npy.nan_to_num(self.vw)
 
+        del files
         self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
                                  self.Phi_i, self.Pi_i, self.cosmo_paras,
                                  self.final_r, self.Phi_f)

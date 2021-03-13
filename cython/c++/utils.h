@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <zlib.h>
 
+#include <omp.h>
 typedef double real_t;
 typedef int idx_t;
 
@@ -37,4 +38,10 @@ void _interp(real_t *d, real_t *dx, idx_t nx, idx_t ny, idx_t nz,
       res[n] += tempj * (1.0 - std::fabs(x_list[3*n+0] - (real_t)i * dx[0]) / dx[0] );
     }
   }
+}
+
+void _test_openmp()
+{
+    std::ofstream cout("omp_num.txt");
+    cout<<"No. of threads is "<<omp_get_num_threads()<<std::endl;
 }

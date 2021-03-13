@@ -132,6 +132,7 @@ public:
 
     void update_pos_map(real_t * pos, real_t * vel, idx_t *ids, idx_t np){
 
+#pragma omp parallel for
         for(idx_t i = 0; i < np; i++){
             if( ids[i] > n_tot_part){
                 cout<<"ERROR! The id is tool large!";

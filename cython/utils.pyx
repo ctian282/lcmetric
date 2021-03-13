@@ -85,3 +85,8 @@ def scale(field, pks) :
 def fftFreqs(L, N) :
     ks = 2.0*npy.pi*npy.fft.fftfreq(N, L/N)
     return npy.sqrt( ks[:,None,None]**2 + ks[None,:,None]**2 + ks[None,None,:]**2 )
+
+
+cpdef test_openmp():
+
+    cutils._test_openmp()
