@@ -37,16 +37,16 @@ cpdef interp(real_t[:,:,::1] ta, real_t [:] dx, real_t[:,::1] x_list):
 # Given a periodic snapshot data, calculate its d/dr
 # r maybe larger than the box size
 # Only linearly interpolate a sphere (r, nise)
-def f_r_derv(ta, dx, origin, r, x_list):
+def f_r_derv(ta, dx, r, x_list):
 
     # calcuate derivatives on all mesh here
-    derv1 = fderv1(ta, dx[0], 0)
-    derv2 = fderv1(ta, dx[1], 1)
-    derv3 = fderv1(ta, dx[2], 2)
+    derv1 = npy.ascontiguousarray(fderv1(ta, dx[0], 0))
+    derv2 = npy.ascontiguousarray(fderv1(ta, dx[1], 1))
+    derv3 = npy.ascontiguousarray(fderv1(ta, dx[2], 2))
 
-    return (  (x_list[:,0] - origin[0]) * interp(derv1, dx, x_list) \
-            + (x_list[:,1] - origin[1]) * interp(derv2, dx, x_list)  \
-            + (x_list[:,2] - origin[2]) * interp(derv3, dx, x_list)  ) / r
+    return (  (x_list[:,0]) * interp(derv1, dx, x_list)
+            + (x_list[:,1]) * interp(derv2, dx, x_list)
+            + (x_list[:,2]) * interp(derv3, dx, x_list)) / r
 
 def inverse_derv(field, L, N, dir):
 

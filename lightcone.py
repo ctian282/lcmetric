@@ -124,10 +124,11 @@ class Lightcone:
         ])
         x_list = npy.ascontiguousarray(npy.transpose(x_list))
 
-        Phi = ut.inverse_Lap(rf, self.L_snap, self.N_snap)
-        Pi = ut.f_r_derv(Phi, npy.array([self.L_snap / self.N_snap] * 3), r,
-                         x_list)
-        Phi = ut.interp(Phi, self.dx, x_list)
+        Phi = npy.ascontiguousarray(
+            ut.inverse_Lap(rf, self.L_snap, self.N_snap))
+        Pi = utC.f_r_derv(Phi, npy.array([self.L_snap / self.N_snap] * 3), r,
+                          x_list)
+        Phi = utC.interp(Phi, self.dx, x_list)
 
         return (Phi, Pi)
 
