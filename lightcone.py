@@ -767,9 +767,10 @@ class LightconeFromSnaps(Lightcone):
 
         self.a = npy.array([1 / (1+scpy.optimize.minimize_scalar(
             self.inverse_Hint, args=(self.to_r(n, self.NR))).x) \
-                          for n in range(NR+1)])
+                          for n in range(NR+2)])
 
-        print("No. of particles in each snap is " +
+        print("No. of snaps is " + str(self.n_snaps) +
+              ", and No. of particles in each snap is " +
               str(files[0]['Position'].shape[0]),
               flush=True)
 
