@@ -49,7 +49,7 @@ cdef class DensFromSnaps:
         self.c_dens.proc_snap_chunk(
             &pos[0, 0], &vel[0, 0], &IDs[0],
             tau, dtau, 0, 0, pos.shape[0], self.is_first_snap)
-
+        return True
 
     def not_first_snap(self):
         self.is_first_snap = False

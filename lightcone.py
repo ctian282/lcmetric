@@ -769,13 +769,17 @@ class LightconeFromSnaps(Lightcone):
             self.inverse_Hint, args=(self.to_r(n, self.NR))).x) \
                           for n in range(NR+1)])
 
-        print("Starting reading initial snap")
+        print("No. of particles in each snap is " +
+              str(files[0]['Position'].shape[0]),
+              flush=True)
+
+        print("Starting reading initial snap", flush=True)
         self.Phi_i, self.Pi_i = self.Phi_Pi_gen(
             self.read_snap_density(self.names[init_snap_i], snap_type,
                                    self.init_a), self.init_r, self.theta_list,
             self.phi_list)
 
-        print("Starting reading final snap")
+        print("Starting reading final snap", flush=True)
         self.Phi_f, self.Pi_f = self.Phi_Pi_gen(
             self.read_snap_density(self.names[final_snap_i], snap_type,
                                    self.final_a), self.final_r,
