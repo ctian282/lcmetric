@@ -765,9 +765,12 @@ class LightconeFromSnaps(Lightcone):
             self.met.sols['Phi'] = self.Phi
             return
 
-        self.a = npy.array([1 / (1+scpy.optimize.minimize_scalar(
-            self.inverse_Hint, args=(self.to_r(n, self.NR))).x) \
-                          for n in range(NR+2)])
+        # shifted (-1) version of the scale factor,
+        # will also cover the region that one grid outside
+        # (final_r, init_r)
+        self.a_shift = npy.ascontiguousarray([1 / (1+scpy.optimize.minimize_scalar(
+            self.inverse_Hint, args=(self.to_r(n - 1, self.NR))).x) \
+                          for n in range(NR+3)])
 
         print("No. of snaps is " + str(self.n_snaps) +
               ", and No. of particles in each snap is " +
@@ -883,10 +886,11 @@ class LightconeFromSnaps(Lightcone):
                                self.vw, counts, self.init_r, self.final_r,
                                self.NR, self.NSIDE, 0)
                 if (lensing_kappa is True):
-                    lc_CIC.lensing_kappa_deposit(pdata, self.a, self.origin,
-                                                 self.kappa1, self.kappa2,
-                                                 self.init_r, self.final_r,
-                                                 self.NR, self.NSIDE)
+                    lc_CIC.lensing_kappa_deposit(pdata, self.a_shift,
+                                                 self.origin, self.kappa1,
+                                                 self.kappa2, self.init_r,
+                                                 self.final_r, self.NR,
+                                                 self.NSIDE)
 
                 self.snap_den.clear_lc()
 

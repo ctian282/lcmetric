@@ -16,7 +16,7 @@ cpdef deposit(real_t [:,::1] particles, real_t [:] origin, real_t [:,::1] delta,
                        nparticles, density_count,                            \
                        max_r, min_r, NR, NSIDE, vx_is_weight)
 
-cpdef lensing_kappa_deposit(real_t [:,::1] particles, real_t [:] a, real_t [:] origin,\
+cpdef lensing_kappa_deposit(real_t [:,::1] particles, real_t [::1] a, real_t [:] origin,\
               real_t [:,::1] kappa1, real_t [:,::1] kappa2, \
               real_t max_r, real_t min_r, idx_t NR, idx_t NSIDE):
     nparticles = particles.shape[0]

@@ -7,7 +7,7 @@
 
 
 typedef double real_t;
-typedef int idx_t;
+typedef long long idx_t;
 
 inline idx_t CHI2CHIBIN(real_t r, real_t dr)
 {
@@ -23,7 +23,7 @@ void kappa_deposit(real_t *particles, real_t *a, real_t *origin,
                    real_t *kappa1, real_t *kappa2, idx_t nparticles,
                    real_t max_r, real_t min_r, idx_t NR, idx_t NSIDE)
 {
-    T_Healpix_Base<idx_t> * HP = new T_Healpix_Base<idx_t>
+    T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
         ( NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE );
 
     real_t dr = (max_r - min_r) / NR;
@@ -57,7 +57,7 @@ void kappa_deposit(real_t *particles, real_t *a, real_t *origin,
         pointing ptg = pointing(theta, phi);
         auto pix = HP->ang2pix(ptg);
 
-        real_t ap = a[ic] * tc + a[icp] * dc;
+        real_t ap = a[ic+1] * tc + a[icp+1] * dc;
         if(dc <= 0.5 && ic >= 0){
 #pragma omp atomic
             kappa1[IDX(ic, pix, NPIX)] += 1.0 / ap / r;
@@ -80,7 +80,7 @@ void CIC_deposit(real_t *particles, real_t *origin, real_t *delta,
                  real_t max_r, real_t min_r, idx_t NR, idx_t NSIDE, idx_t vx_is_weight)
 {
     // Healpix instance
-    T_Healpix_Base<idx_t> * HP = new T_Healpix_Base<idx_t>
+    T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
         ( NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE );
 
     real_t dr = (max_r - min_r) / NR;
@@ -129,7 +129,7 @@ void CIC_deposit(real_t *particles, real_t *origin, real_t *delta,
         real_t tc = 1.0 - dc;
 
         pointing ptg = pointing(theta, phi);
-        auto pix = fix_arr<idx_t, 4>();
+        auto pix = fix_arr<int, 4>();
         auto wgt = fix_arr<double, 4>();
         HP->get_interpol(ptg, pix, wgt);
 
@@ -178,7 +178,7 @@ void CIC_deposit_with_wgt(
     real_t max_r, real_t min_r, idx_t NR, idx_t NSIDE, real_t *weight)
 {
     // Healpix instance
-    T_Healpix_Base<idx_t> * HP = new T_Healpix_Base<idx_t>
+    T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
 
         ( NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE );
     real_t dr = (max_r - min_r) / NR;
@@ -223,7 +223,7 @@ void CIC_deposit_with_wgt(
         real_t tc = 1.0 - dc;
 
         pointing ptg = pointing(theta, phi);
-        auto pix = fix_arr<idx_t, 4>();
+        auto pix = fix_arr<int, 4>();
         auto wgt = fix_arr<double, 4>();
         HP->get_interpol(ptg, pix, wgt);
 
