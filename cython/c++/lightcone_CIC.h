@@ -9,19 +9,19 @@
 typedef double real_t;
 typedef long long idx_t;
 
-inline idx_t CHI2CHIBIN(real_t r, real_t dr)
+inline int CHI2CHIBIN(real_t r, real_t dr)
 {
   return std::floor ((r) / dr);
 }
 
-inline idx_t IDX(idx_t nr, idx_t pix, idx_t NPIX)
+inline idx_t IDX(int nr, int pix, int NPIX)
 {
-  return nr*NPIX + pix;
+    return (idx_t)nr*NPIX + pix;
 }
 
 void kappa_deposit(real_t *particles, real_t *a, real_t *origin,
                    real_t *kappa1, real_t *kappa2, idx_t nparticles,
-                   real_t max_r, real_t min_r, idx_t NR, idx_t NSIDE)
+                   real_t max_r, real_t min_r, int NR, int NSIDE)
 {
     T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
         ( NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE );
@@ -45,8 +45,8 @@ void kappa_deposit(real_t *particles, real_t *a, real_t *origin,
         if(phi <= 0.0) { phi = 2.0*M_PI + phi; } // atan2 in range (-pi,pi) -> (0,2pi)
         if(phi >= 2.0*M_PI) phi = 2.0*M_PI - 1.0e-6;
 
-        idx_t ic = CHI2CHIBIN(r-min_r, dr);
-        idx_t icp = ic+1;
+        int ic = CHI2CHIBIN(r-min_r, dr);
+        int icp = ic+1;
 
         if(icp >= NR + 2 || ic < -1) continue;
 
@@ -77,7 +77,7 @@ void kappa_deposit(real_t *particles, real_t *a, real_t *origin,
 void CIC_deposit(real_t *particles, real_t *origin, real_t *delta,
                  real_t *vw, real_t *counts,
                  idx_t nparticles, real_t count_density,
-                 real_t max_r, real_t min_r, idx_t NR, idx_t NSIDE, idx_t vx_is_weight)
+                 real_t max_r, real_t min_r, int NR, int NSIDE, int vx_is_weight)
 {
     // Healpix instance
     T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
@@ -113,8 +113,8 @@ void CIC_deposit(real_t *particles, real_t *origin, real_t *delta,
             vr = vx;
         }
 
-        idx_t ic = CHI2CHIBIN(r-min_r, dr);
-        idx_t icp = ic+1;
+        int ic = CHI2CHIBIN(r-min_r, dr);
+        int icp = ic+1;
 
         if(icp >= NR + 2 || ic < -1) continue;
 
@@ -175,7 +175,7 @@ void CIC_deposit(real_t *particles, real_t *origin, real_t *delta,
 void CIC_deposit_with_wgt(
     real_t *particles, real_t *origin, real_t *delta, real_t *vw, real_t *counts,
     idx_t nparticles, real_t count_density,
-    real_t max_r, real_t min_r, idx_t NR, idx_t NSIDE, real_t *weight)
+    real_t max_r, real_t min_r, int NR, int NSIDE, real_t *weight)
 {
     // Healpix instance
     T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
@@ -208,8 +208,8 @@ void CIC_deposit_with_wgt(
 
         real_t vr = (vx * x + vy * y + vz * z) / r;
 
-        idx_t ic = CHI2CHIBIN(r-min_r, dr);
-        idx_t icp = ic+1;
+        int ic = CHI2CHIBIN(r-min_r, dr);
+        int icp = ic+1;
 
         if(icp >= NR + 2 || ic < -1) continue;
 
