@@ -21,11 +21,11 @@ using namespace std::chrono;
 
 typedef long long idx_t;
 
-template<class T> class _DensFromSnaps
+template<class T, class IT> class _DensFromSnaps
 {
 public:
 
-    idx_t n_tot_part;
+    IT n_tot_part;
     int n_obs;
 
     int max_move_x, max_move_y, max_move_z;
@@ -42,7 +42,7 @@ public:
 
     std::ofstream cout;
 
-    _DensFromSnaps(idx_t n_tot_part_in, double * obs_in, double init_r_in,
+    _DensFromSnaps(IT n_tot_part_in, double * obs_in, double init_r_in,
                    double *box_in):n_tot_part(n_tot_part_in),
                                    init_r(init_r_in),
                                    obs(obs_in),
@@ -64,15 +64,15 @@ public:
         lc_p.clear();
     }
 
-    void advance_snap(T *pos, T *vel, idx_t *ids, double lc_r,
-                      double tau, double dtau, T a_dot, T a, idx_t np) {
+    void advance_snap(T *pos, T *vel, IT *ids, double lc_r,
+                      double tau, double dtau, T a_dot, T a, IT np) {
 
         max_move_x = ceil(2*lc_r / box[0]);
         max_move_y = ceil(2*lc_r / box[1]);
         max_move_z = ceil(2*lc_r / box[2]);
 
 #pragma omp parallel for
-        for(idx_t i = 0; i < np; i ++){
+        for(IT i = 0; i < np; i ++){
             for(int mx = -max_move_x; mx <= max_move_x; mx++){
                 for(int my = - max_move_y; my <= max_move_y; my++){
                     for(int mz = -max_move_z; mz <= max_move_z; mz++){
@@ -130,10 +130,10 @@ public:
         }
     }
 
-    void update_pos_map(T * pos, T * vel, idx_t *ids, idx_t np){
+    void update_pos_map(T * pos, T * vel, IT *ids, IT np){
 
 #pragma omp parallel for
-        for(idx_t i = 0; i < np; i++){
+        for(IT i = 0; i < np; i++){
             if( ids[i] > n_tot_part){
                 cout<<"ERROR! The id is tool large!";
                 throw(-1);
@@ -150,7 +150,7 @@ public:
 
     }
 
-    void proc_snap(T * pos, T * vel, idx_t *ids, double tau,
+    void proc_snap(T * pos, T * vel, IT *ids, double tau,
                    double dtau, T a, T H, bool is_first_snap) {
         if(is_first_snap == true){
             update_pos_map(pos, vel, ids, n_tot_part);
@@ -161,8 +161,8 @@ public:
         }
     }
 
-    void proc_snap_chunk(T * pos, T * vel, idx_t *ids, double tau,
-                         double dtau, T a, T H, idx_t np, bool is_first_snap) {
+    void proc_snap_chunk(T * pos, T * vel, IT *ids, double tau,
+                         double dtau, T a, T H, IT np, bool is_first_snap) {
         if(is_first_snap == true){
             update_pos_map(pos, vel, ids, np);
         }

@@ -11,7 +11,7 @@ typedef long long idx_t;
 
 #define CHI2CHIBIN(r, dr) std::floor ((r) / (dr));
 
-inline idx_t IDX(int nr, int pix, idx_t NPIX)
+inline idx_t IDX(int nr, int pix, int NPIX)
 {
     return (idx_t)nr*NPIX + (idx_t)pix;
 }
@@ -26,7 +26,7 @@ void kappa_deposit(T *particles, double* a, double *origin,
 
     double dr = (max_r - min_r) / NR;
 
-    idx_t NPIX = 12*NSIDE*NSIDE;
+    int NPIX = 12*NSIDE*NSIDE;
 
 #pragma omp parallel for
     for(idx_t p = 0; p < nparticles; p++){
@@ -84,7 +84,7 @@ void CIC_deposit(T *particles, double *origin, T *delta,
 
     double dr = (max_r - min_r) / NR;
 
-    idx_t NPIX = 12*NSIDE*NSIDE;
+    int NPIX = 12*NSIDE*NSIDE;
 
 #pragma omp parallel for
     for(idx_t p = 0; p < nparticles; p++)
@@ -183,7 +183,7 @@ void CIC_deposit_with_wgt(
         ( NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE );
     double dr = (max_r - min_r) / NR;
 
-    idx_t NPIX = 12*NSIDE*NSIDE;
+    int NPIX = 12*NSIDE*NSIDE;
 
 #pragma omp parallel for
     for(idx_t p = 0; p < nparticles; p++)

@@ -7,16 +7,17 @@ import lcmetric.utils as ut
 
 cimport numpy as npy
 
-#cimport typedefs
 cimport clcdensity
 
 from libcpp cimport bool
 from libcpp.vector cimport vector
 
+ctypedef long long idx_t
+ctypedef double real_t
 
 cdef class DensFromSnaps:
 
-    cdef _DensFromSnaps[real_t] *c_dens
+    cdef _DensFromSnaps[real_t, idx_t] *c_dens
 
     cdef dict cosmo_paras
 
@@ -35,7 +36,8 @@ cdef class DensFromSnaps:
 
         cdef double[:] box = npy.array([L_snap, L_snap, L_snap])
 
-        self.c_dens = new _DensFromSnaps[real_t](N_part, &origin[0], init_r, &box[0])
+        self.c_dens = new _DensFromSnaps[real_t, idx_t](
+            N_part, &origin[0], init_r, &box[0])
         self.is_first_snap = True
 
     def __dealloc__(self):

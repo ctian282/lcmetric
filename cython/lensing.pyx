@@ -58,7 +58,7 @@ class Lensing:
             self.geo = geo.Geodesic(self.Phi, self.Pi, self.Omega,
                                     self.dPi_dr, self.a, self.NR,
                                     self.init_r, self.final_r, self.NSIDE,
-                                    ang_epsilon = 1e-7)
+                                    ang_epsilon)
         elif(mode is 'born_approx_lc'):
             self.kappa1 = kwargs['kappa1']
             self.kappa2 = kwargs['kappa2']

@@ -19,22 +19,15 @@ using namespace std::complex_literals;
 using namespace std::chrono;
 
 
-typedef double real_t;
-typedef int idx_t;
 
-typedef std::complex<real_t> cmpx_t;
+typedef std::complex<double> cmpx_t;
 
-
-
-inline idx_t IDX(idx_t nr, idx_t pix, idx_t NPIX){
-    return nr*NPIX + pix;
-}
 
 struct Photon{
-    idx_t pid;
+    int pid;
     pointing pt;
-    real_t r, a;
-    real_t Phi, dPhi_dr, dPhi_dtheta, dPhi_dphi,
+    double r, a;
+    double Phi, dPhi_dr, dPhi_dtheta, dPhi_dphi,
         dPhi_ddtheta, dPhi_ddphi, dPhi_dthetadphi,
         dPhi_drdtheta, dPhi_drdphi,
         Omega, dPhi_ddr, Phi_lap;
@@ -44,47 +37,47 @@ struct Photon{
 };
 
 
-class _Geodesic
+template<class T, class IT> class _Geodesic
 {
 public:
 
-    idx_t NR, NSIDE, NPIX, n_iter, lmax, n_max_shooting;;
-    real_t init_r, final_r;
-    real_t dr, ang_epsilon;
+    int NR, NSIDE, NPIX, n_iter, lmax, n_max_shooting;;
+    double init_r, final_r;
+    double dr, ang_epsilon;
 
-    idx_t n_p, n_alm_idx;
+    int n_p, n_alm_idx;
 
 
     GEODESIC_APPLY_TO_FIELDS(RK2_FIELDS_ALL_CREATE);
     GEODESIC_APPLY_TO_COMPLEX_FIELDS(RK2_COMPLEX_FIELDS_ALL_CREATE);
     //derived fields
-    real_t *z;
+    double *z;
 
 
-    real_t *Phi, *Pi, *Omega, *a, *dPi_dr;
-    real_t *tars;
+    T *Phi, *Pi, *Omega, *dPi_dr;
+    double *tars, *a;
     // initial angular corrections
-    real_t *ang_corrs, *d_diff_ang, *d_diff_tar_ang, *diff_s_ang;
-    real_t max_tar_r;
+    double *ang_corrs, *d_diff_ang, *d_diff_tar_ang, *diff_s_ang;
+    double max_tar_r;
     // lower radial bin for tars, is also used
     // as indicator to mark if a photon cannot be traced anymore,
     // usually this happens when photon is very close to the pole
-    idx_t *tars_lower_bins;
+    int *tars_lower_bins;
 
 
     pointing *ang_list;
 
-    Healpix_Map <real_t> Phi_s[2], Pi_s[2], Omega_s[2],
+    Healpix_Map <double> Phi_s[2], Pi_s[2], Omega_s[2],
         Phi_s_ddr[2], Phi_s_dtheta[2], Phi_s_dphi[2],
         Phi_s_ddtheta[2], Phi_s_ddphi[2], Phi_s_dthetadphi[2],
         Phi_s_drdtheta[2], Phi_s_drdphi[2],
         Phi_s_ang_lap[2], temp_map[2];
-    Alm< xcomplex< real_t > > temp_lm;
+    Alm< xcomplex< double > > temp_lm;
 
 
-    T_Healpix_Base<idx_t> *hp;
+    T_Healpix_Base<int> *hp;
     Alm_Base * lm_base;
-    idx_t *l_list, *m_list;
+    int *l_list, *m_list;
 
     std::ofstream cout;
 
@@ -92,20 +85,25 @@ public:
 
     bool enable_shear;
 
-    inline real_t to_r(idx_t nr){
-        return final_r + (init_r - final_r) * (real_t)nr / NR;
+
+    inline IT IDX(int nr, int pix, int NPIX) {
+        return (IT)nr*NPIX + (IT)pix;
     }
 
-    _Geodesic(real_t *Phi_in, real_t *Pi_in, real_t *Omega_in, real_t *dPi_dr_in,
-              real_t * a_in, idx_t NR_in,
-              real_t init_r_in, real_t final_r_in):cout("debug.txt") {
+    inline double to_r(int nr){
+        return final_r + (init_r - final_r) * (double)nr / NR;
+    }
+
+    _Geodesic(T *Phi_in, T *Pi_in, T *Omega_in, T *dPi_dr_in,
+              double * a_in, int NR_in,
+              double init_r_in, double final_r_in):cout("debug.txt") {
         return;
     }
 
-    _Geodesic(real_t *Phi_in, real_t *Pi_in, real_t *Omega_in, real_t *dPi_dr_in,
-              real_t * a_in, idx_t NR_in, real_t init_r_in, real_t final_r_in,
-              idx_t NSIDE_in, idx_t n_iter_in= 30, real_t ang_epsilon_in = 1e-6,
-              idx_t n_max_shooting_in = 10, bool enable_shear_in = false):
+    _Geodesic(T *Phi_in, T *Pi_in, T *Omega_in, T *dPi_dr_in,
+              double * a_in, int NR_in, double init_r_in, double final_r_in,
+              int NSIDE_in, int n_iter_in= 30, double ang_epsilon_in = 1e-6,
+              int n_max_shooting_in = 10, bool enable_shear_in = false):
         NR(NR_in),
         NSIDE(NSIDE_in),
         NPIX(12*NSIDE*NSIDE),
@@ -114,13 +112,13 @@ public:
         n_max_shooting(n_max_shooting_in),
         init_r(init_r_in),
         final_r(final_r_in),
-        dr((init_r - final_r)/(real_t)NR),
+        dr((init_r - final_r)/(double)NR),
         ang_epsilon(ang_epsilon_in),
         Phi(Phi_in),
         Pi(Pi_in),
         Omega(Omega_in),
-        a(a_in),
         dPi_dr(dPi_dr_in),
+        a(a_in),
         temp_lm(lmax, lmax),
         cout("debug.txt"),
         hp_time_con(0),
@@ -146,7 +144,7 @@ public:
         }
 
         // Healpix instance
-        hp = new T_Healpix_Base<idx_t>
+        hp = new T_Healpix_Base<int>
                 ( NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE );
 
         ang_list = new pointing[NPIX];
@@ -170,25 +168,25 @@ public:
 
     void gen_tars_lower_bins() {
         for(int i = 0; i < n_p; i++)
-            tars_lower_bins[i] = (idx_t)( (tars[6*i] - final_r) / dr );
+            tars_lower_bins[i] = (int)( (tars[6*i] - final_r) / dr );
     }
 
     void alloc_par_arrs() {
-        tars = new real_t [6*n_p]();
-        tars_lower_bins = new idx_t [n_p]();
-        ang_corrs = new real_t [2*n_p]();
-        d_diff_ang = new real_t [2*n_p]();
-        d_diff_tar_ang = new real_t [2*n_p]();
-        diff_s_ang = new real_t [n_p]();
+        tars = new double [6*n_p]();
+        tars_lower_bins = new int [n_p]();
+        ang_corrs = new double [2*n_p]();
+        d_diff_ang = new double [2*n_p]();
+        d_diff_tar_ang = new double [2*n_p]();
+        diff_s_ang = new double [n_p]();
 
-        z = new real_t [n_p]();
+        z = new double [n_p]();
 
         GEODESIC_APPLY_TO_FIELDS_ARGS(RK2_FIELDS_ALL_INIT, n_p);
         GEODESIC_APPLY_TO_COMPLEX_FIELDS_ARGS(RK2_COMPLEX_FIELDS_ALL_INIT, n_p);
     }
 
     // Targets are healpix pixels at distance r
-    void init_with_healpix_tars(real_t r) {
+    void init_with_healpix_tars(double r) {
         max_tar_r = r;
         if(r > init_r)
         {
@@ -197,7 +195,7 @@ public:
         }
         n_p = NPIX;
         alloc_par_arrs();
-        for(idx_t i = 0; i < NPIX; i++)
+        for(int i = 0; i < NPIX; i++)
         {
             pointing ang = hp->pix2ang(i);
 
@@ -217,9 +215,9 @@ public:
     // 1). Extract the healpix array on this shell
     // 2). Convert the alm coeffs of Phi field on this shell
     // 3). Calculating derv1 of Phi field by healpix
-    void update_shell_fields(idx_t n, idx_t c) {
+    void update_shell_fields(int n, int c) {
         auto start = system_clock::now();
-        for(int i = IDX(n, 0, NPIX); i < IDX(n, 0, NPIX) + NPIX; i++)
+        for(IT i = IDX(n, 0, NPIX); i < IDX(n, 0, NPIX) + NPIX; i++)
         {
             Phi_s[c][i - IDX(n, 0, NPIX)] = Phi[i];
             Pi_s[c][i - IDX(n, 0, NPIX)] = Pi[i];
@@ -229,15 +227,15 @@ public:
         // Calculating first derivatives
         map2alm_iter(Phi_s[c], temp_lm, n_iter);
         alm2map_der1(temp_lm, temp_map[c], Phi_s_dtheta[c], Phi_s_dphi[c]);
-        for(idx_t i = 0; i < NPIX; i++)
+        for(int i = 0; i < NPIX; i++)
             Phi_s_dphi[c][i] *= sin(ang_list[i].theta);
 
         // Calculating lap
-        for(idx_t l = 0; l <= lmax; l++)
-            for(idx_t m = 0; m <= l; m++)
+        for(int l = 0; l <= lmax; l++)
+            for(int m = 0; m <= l; m++)
             {
                 //temp_lm[i] *= -l_list[i] * (l_list[i]+1);
-                temp_lm(l, m) *= -(real_t)l *(l+1);
+                temp_lm(l, m) *= -(double)l *(l+1);
             }
         alm2map(temp_lm, Phi_s_ang_lap[c]);
 
@@ -247,14 +245,14 @@ public:
 
         map2alm_iter(Pi_s[c], temp_lm, n_iter);
         alm2map_der1(temp_lm, temp_map[c], Phi_s_drdtheta[c], Phi_s_drdphi[c]);
-        for(idx_t i = 0; i < NPIX; i++)
+        for(int i = 0; i < NPIX; i++)
             Phi_s_drdphi[c][i] *= sin(ang_list[i].theta);
 
 
         // Calculating second and mixing derivatives
         map2alm_iter(Phi_s_dphi[c], temp_lm, n_iter);
         alm2map_der1(temp_lm, temp_map[c], Phi_s_dthetadphi[c], Phi_s_ddphi[c]);
-        for(idx_t i = 0; i < NPIX; i++)
+        for(int i = 0; i < NPIX; i++)
             Phi_s_ddphi[c][i] *= sin(ang_list[i].theta);
 
         auto end   = system_clock::now();
@@ -266,39 +264,39 @@ public:
 
     /**********************RHS of geodesics***************/
 
-    real_t dtheta_dt(Photon &p) {
+    double dtheta_dt(Photon &p) {
         return (1.0 + 2.0 * p.Phi ) * p.ntheta;
     }
 
-    real_t dphi_dt(Photon &p) {
+    double dphi_dt(Photon &p) {
         return (1.0 + 2.0 * p.Phi ) * p.nphi;
     }
 
-    real_t dk0_dt(Photon &p) {
+    double dk0_dt(Photon &p) {
         return -4.0 * (p.dPhi_dr + p.ntheta * p.dPhi_dtheta + p.nphi * p.dPhi_dphi)
             - 2.0 * (p.Omega + p.dPhi_dr);
     }
 
-    real_t dnr_dt(Photon &p) {
+    double dnr_dt(Photon &p) {
         return 0.0;
     }
 
-    real_t dntheta_dt(Photon &p) {
+    double dntheta_dt(Photon &p) {
         return 2.0 * p.ntheta * ( 1.0 * p.dPhi_dr+ p.ntheta * p.dPhi_dtheta + p.nphi * p.dPhi_dphi)
             - 2.0 * (p.dPhi_dtheta / PW2(p.r)  );
     }
 
-    real_t dnphi_dt(Photon &p) {
+    double dnphi_dt(Photon &p) {
         return 2.0 * p.nphi * ( 1.0 * p.dPhi_dr+ p.ntheta * p.dPhi_dtheta + p.nphi * p.dPhi_dphi)
             - 2.0 * (p.dPhi_dphi / PW2(p.r * sin(p.pt.theta)));
 
     }
 
-    real_t dDA_dt(Photon &p) {
+    double dDA_dt(Photon &p) {
         return p.dDAdt;
     }
 
-    real_t ddDAdt_dt(Photon &p) {
+    double ddDAdt_dt(Photon &p) {
         return - dk0_dt(p) * p.dDAdt
             + 1.0 * (1 + 2 * p.Phi) *
             (p.nr * p.nr * p.dPhi_ddr + 2.0 * p.nr * p.ntheta * p.dPhi_drdtheta + 2.0 * p.nr * p.nphi * p.dPhi_drdphi
@@ -308,40 +306,40 @@ public:
     }
 
 
-    real_t de1r_dt(Photon &p) {
+    double de1r_dt(Photon &p) {
         return p.nr * 2.0 *
             (p.e1r * p.dPhi_dr + p.e1theta * p.dPhi_dtheta + p.e1phi * p.dPhi_dphi);
     }
-    real_t de1theta_dt(Photon &p) {
+    double de1theta_dt(Photon &p) {
         return p.ntheta * 2.0 *
             (p.e1r * p.dPhi_dr + p.e1theta * p.dPhi_dtheta + p.e1phi * p.dPhi_dphi);
     }
-    real_t de1phi_dt(Photon &p) {
+    double de1phi_dt(Photon &p) {
         return p.nphi * 2.0 *
             (p.e1r * p.dPhi_dr + p.e1theta * p.dPhi_dtheta + p.e1phi * p.dPhi_dphi);
     }
 
-    real_t de2r_dt(Photon &p) {
+    double de2r_dt(Photon &p) {
         return 1.0 * 2.0 *
             (p.e1r * p.dPhi_dr + p.e1theta * p.dPhi_dtheta + p.e1phi * p.dPhi_dphi);
     }
-    real_t de2theta_dt(Photon &p) {
+    double de2theta_dt(Photon &p) {
         return p.ntheta * 2.0 *
             (p.e1r * p.dPhi_dr + p.e1theta * p.dPhi_dtheta + p.e1phi * p.dPhi_dphi);
     }
-    real_t de2phi_dt(Photon &p) {
+    double de2phi_dt(Photon &p) {
         return p.nphi * 2.0 *
             (p.e1r * p.dPhi_dr + p.e1theta * p.dPhi_dtheta + p.e1phi * p.dPhi_dphi);
     }
 
 
-    real_t dbeta1_dt(Photon &p) {
+    double dbeta1_dt(Photon &p) {
         return 2.0 * p.beta1 * (p.Omega + p.dPhi_dr)
             - (1 + 2 * p.Phi) * p.a *
             (p.e1r * p.dPhi_dr + p.e1theta * p.dPhi_dtheta + p.e1phi * p.dPhi_dphi);
     }
 
-    real_t dbeta2_dt(Photon &p) {
+    double dbeta2_dt(Photon &p) {
         return 2.0 * p.beta2 * (p.Omega + p.dPhi_dr)
             - (1 + 2 * p.Phi) * p.a *
             (p.e2r * p.dPhi_dr + p.e2theta * p.dPhi_dtheta + p.e2phi * p.dPhi_dphi);
@@ -379,7 +377,7 @@ public:
 
     /****************************************************/
 
-    void set_photon_values(Photon &p, idx_t p_id, idx_t n, idx_t c) {
+    void set_photon_values(Photon &p, int p_id, int n, int c) {
         p.pid = p_id;
 
         GEODESIC_APPLY_TO_FIELDS(SET_LOCAL_VALUES);
@@ -422,8 +420,8 @@ public:
     }
 
     void set_inter_slice_photon_values(Photon &p,
-                                       idx_t p_id,
-                                       idx_t n, idx_t c, real_t weight_l) {
+                                       int p_id,
+                                       int n, int c, double weight_l) {
         p.pid = p_id;
         GEODESIC_APPLY_TO_FIELDS(SET_LOCAL_VALUES);
         GEODESIC_APPLY_TO_COMPLEX_FIELDS(SET_LOCAL_VALUES);
@@ -481,7 +479,7 @@ public:
 
 
     // rk2 advance from n to n+1
-    void time_advance(idx_t n, idx_t c) {
+    void time_advance(int n, int c) {
 
         if(n == NR || to_r(n) > max_tar_r )
         {
@@ -497,7 +495,7 @@ public:
 
             Photon p;
             set_photon_values(p, i, n, c);
-            real_t dtau;
+            double dtau;
 
             // It is the last step?
             if( n < tars_lower_bins[i])
@@ -523,7 +521,7 @@ public:
         {
             if(n > tars_lower_bins[i]) continue;
             Photon p;
-            real_t dtau;
+            double dtau;
 
 
             if( n < tars_lower_bins[i])
@@ -576,8 +574,8 @@ public:
                     diff_s_ang[i] = 0;
                 continue;
             }
-            real_t dtheta = theta_a[i] - tars[6*i+1];
-            real_t dphi = phi_a[i] - tars[6*i+2];
+            double dtheta = theta_a[i] - tars[6*i+1];
+            double dphi = phi_a[i] - tars[6*i+2];
             diff_s_ang[i] = fabs(sin(tars[6*i+1]) * dtheta * dphi);
             if(diff_s_ang[i] <= ang_epsilon)
             {
@@ -585,8 +583,8 @@ public:
                 continue;
             }
 
-            real_t theta_derv = 1.0;
-            real_t phi_derv = 1.0;
+            double theta_derv = 1.0;
+            double phi_derv = 1.0;
 
             if(fabs(d_diff_ang[2*i]) > 1e-15)
                 theta_derv = (dtheta - d_diff_tar_ang[2*i] ) / d_diff_ang[2*i];
@@ -634,11 +632,11 @@ public:
     }
 
     void cal_redshift(Photon &p) {
-        real_t ur = tars[6*p.pid+3];
-        real_t utheta = tars[6*p.pid+4];
-        real_t uphi = tars[6*p.pid+5];
-        real_t q = PW2(ur) + PW2(p.r * utheta) + PW2(p.r * sin(p.theta) * uphi);
-        real_t ni_ui = p.nr * ur + PW2(p.r) * p.ntheta * utheta + PW2(p.r * sin(p.theta)) * p.nphi * uphi;
+        double ur = tars[6*p.pid+3];
+        double utheta = tars[6*p.pid+4];
+        double uphi = tars[6*p.pid+5];
+        double q = PW2(ur) + PW2(p.r * utheta) + PW2(p.r * sin(p.theta) * uphi);
+        double ni_ui = p.nr * ur + PW2(p.r) * p.ntheta * utheta + PW2(p.r * sin(p.theta)) * p.nphi * uphi;
 
         z[p.pid] = p.k0 / PW2(p.a) * (1+3*p.Phi) *
             (sqrt(PW2(p.a) * PW2(p.a) * (1-2*p.Phi) * PW2(q) + PW2(p.a) )
@@ -647,13 +645,13 @@ public:
 
     void shoot() {
         int cnt = 0;
-        real_t old_max_s_ang = 1e100;
+        double old_max_s_ang = 1e100;
         auto start = system_clock::now();
         while(all_on_tars() == false && cnt < n_max_shooting)
         {
             init_rays();
 
-            idx_t c = 0;
+            int c = 0;
             // Advancing all particles to the shell that has the same radius with target
             for(int i = 0; i < NR; i++)
             {
@@ -663,8 +661,8 @@ public:
 
             gen_corrs();
 
-            real_t max_s_ang = 0;
-            idx_t max_id = -1;
+            double max_s_ang = 0;
+            int max_id = -1;
             for(int i = 0; i < n_p; i++)
             {
                 if(diff_s_ang[i] > max_s_ang) max_id = i;

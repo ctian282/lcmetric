@@ -26,7 +26,7 @@
   function(e2theta, __VA_ARGS__);                       \
   function(e2phi, __VA_ARGS__);                         \
   function(beta1, __VA_ARGS__);                         \
-  function(beta2, __VA_ARGS__);                         
+  function(beta2, __VA_ARGS__);
 
 #define GEODESIC_APPLY_TO_FIELDS(function)      \
   function(theta);                              \
@@ -44,10 +44,10 @@
   function(e2theta);                            \
   function(e2phi);                              \
   function(beta1);                              \
-  function(beta2);                              
+  function(beta2);
 
 #define GEODESIC_APPLY_TO_TEST_FIELDS(function)      \
-  function(theta);                              
+  function(theta);
 
 #define GEODESIC_APPLY_TO_DERIVED_FIELDS_ARGS(function, ...)    \
   function(z, __VA_ARGS__);                         \
@@ -64,55 +64,55 @@
 #define GEODESIC_APPLY_TO_COMPLEX_FIELDS(function)      \
   function(sigma);                                      \
   function(epsilon);                                    \
-  function(omega);                                 
+  function(omega);
 
 
 #define DECLARE_REAL_T(name) \
-  real_t name
+  double name
 
 #define DECLARE_COMPLEX_T(name) \
-  std::complex<real_t> name
+  std::complex<double> name
 
 
 #define RK2_FIELDS_ALL_CREATE(field)    \
-  real_t * field##_a;                   \
-  real_t * field##_f;                   \
-  real_t * field##_c;
+    double * field##_a;                 \
+    double_t * field##_f;               \
+    double * field##_c;
 
-#define RK2_FIELDS_ALL_DEL(field)    \
-  delete [] field##_a;                   \
-  delete [] field##_f;                   \
-  delete [] field##_c;
+#define RK2_FIELDS_ALL_DEL(field)        \
+    delete [] field##_a;                 \
+    delete [] field##_f;                 \
+    delete [] field##_c;
 
 
 #define RK2_COMPLEX_FIELDS_ALL_CREATE(field)    \
-  std::complex<real_t> * field##_a;             \
-  std::complex<real_t> * field##_f;             \
-  std::complex<real_t> * field##_c;
+    std::complex<double> * field##_a;           \
+    std::complex<double> * field##_f;           \
+    std::complex<double> * field##_c;
 
 
 #define RK2_FIELDS_ALL_INIT(field, size)        \
-  field##_a = new real_t[size]();               \
-  field##_f = new real_t[size]();               \
-  field##_c = new real_t[size]();
+    field##_a = new double[size]();             \
+    field##_f = new double[size]();             \
+    field##_c = new double[size]();
 
 
 #define RK2_COMPLEX_FIELDS_ALL_INIT(field, size)        \
-  field##_a = new std::complex<real_t>[size]();         \
-  field##_f = new std::complex<real_t>[size]();         \
-  field##_c = new std::complex<real_t>[size]();
+    field##_a = new std::complex<double>[size]();       \
+    field##_f = new std::complex<double>[size]();       \
+    field##_c = new std::complex<double>[size]();
 
-#define RK2_ADVANCE_ALL_K1(field)                  \
-  field##_c[i] = d##field##_dt(p);              \
-  field##_a[i] += field##_c[i] * dtau;
+#define RK2_ADVANCE_ALL_K1(field)               \
+    field##_c[i] = d##field##_dt(p);            \
+    field##_a[i] += field##_c[i] * dtau;
 
-#define RK2_ADVANCE_ALL_K2(field)                  \
-  field##_c[i] += d##field##_dt(p);              \
-  field##_f[i] += 0.5 * field##_c[i] * dtau;     \
-  field##_a[i] = field##_f[i];
+#define RK2_ADVANCE_ALL_K2(field)                \
+    field##_c[i] += d##field##_dt(p);            \
+    field##_f[i] += 0.5 * field##_c[i] * dtau;   \
+    field##_a[i] = field##_f[i];
 
 
-#define SET_LOCAL_VALUES(name) \
-  p.name = name##_a[p.pid]
+#define SET_LOCAL_VALUES(name)                  \
+    p.name = name##_a[p.pid]
 
 #endif

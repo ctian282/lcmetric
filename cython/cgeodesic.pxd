@@ -1,43 +1,39 @@
 from libcpp cimport bool
-cdef extern from "c++/geodesic_macros.h":
-    pass
+
+
 cdef extern from "c++/geodesic.h":
 
-    ctypedef double real_t
-    ctypedef int idx_t
-
-
 # Declare the class with cdef
-    cdef cppclass _Geodesic:
+    cdef cppclass _Geodesic[T, IT]:
 
-        _Geodesic(real_t *Phi_in, real_t *Pi_in, real_t *Omega_in, real_t *dPi_dr_in,
-                  real_t * a_in, idx_t NR_in, real_t init_r_in, real_t final_r_in,
-                  idx_t NSIDE_in, idx_t n_iter_in, real_t ang_epsilon_in,
-                  idx_t n_max_shooting_in, bool enable_shear_in) except +
+        _Geodesic(T *Phi_in, T *Pi_in, T *Omega_in, T *dPi_dr_in,
+                  double * a_in, int NR_in, double init_r_in, double final_r_in,
+                  int NSIDE_in, int n_iter_in, double ang_epsilon_in,
+                  int n_max_shooting_in, bool enable_shear_in) except +
 
-        void init_with_healpix_tars(real_t r) except +
+        void init_with_healpix_tars(double r) except +
         void shoot() except +
 
 
 
-        idx_t NR;
-        idx_t NSIDE;
-        idx_t NPIX;
-        idx_t niter;
-        idx_t lmax
-        idx_t n_p;
-        idx_t n_alm_idx;
+        int NR;
+        int NSIDE;
+        int NPIX;
+        int niter;
+        int lmax
+        int n_p;
+        int n_alm_idx;
 
-        idx_t *tars_lower_bins;
-
-
-        real_t init_r, final_r;
-        real_t dr, ang_epsilon;
+        int *tars_lower_bins;
 
 
-        real_t *DA_a;
-        real_t *dDAdt_a;
-        real_t *k0_a;
-        real_t *z;
+        double init_r, final_r;
+        double dr, ang_epsilon;
 
-        real_t *ang_corrs;
+
+        double *DA_a;
+        double *dDAdt_a;
+        double *k0_a;
+        double *z;
+
+        double *ang_corrs;
