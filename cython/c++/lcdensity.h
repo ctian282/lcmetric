@@ -19,10 +19,9 @@ using namespace std::complex_literals;
 using namespace std::chrono;
 
 
-typedef double real_t;
 typedef long long idx_t;
 
-class _DensFromSnaps
+template<class T> class _DensFromSnaps
 {
 public:
 
@@ -31,27 +30,28 @@ public:
 
     int max_move_x, max_move_y, max_move_z;
 
-    real_t init_r;
+    double init_r;
     // mapping particles' ID to positions
-    real_t *id2pos, *id2vel, *obs, *box;
+    T *id2pos, *id2vel;
+    double *obs, *box;
 
     bool *is_out;
 
-    std::vector<real_t> lc_p;
+    std::vector<T> lc_p;
 
 
     std::ofstream cout;
 
-    _DensFromSnaps(idx_t n_tot_part_in, real_t * obs_in, real_t init_r_in,
-                   real_t *box_in):n_tot_part(n_tot_part_in),
+    _DensFromSnaps(idx_t n_tot_part_in, double * obs_in, double init_r_in,
+                   double *box_in):n_tot_part(n_tot_part_in),
                                    init_r(init_r_in),
                                    obs(obs_in),
                                    cout("dens_debug.txt") {
-        id2pos = new real_t[3*(n_tot_part + 1)];
-        id2vel = new real_t[3*(n_tot_part + 1)];
+        id2pos = new T[3*(n_tot_part + 1)];
+        id2vel = new T[3*(n_tot_part + 1)];
 
-        box = new real_t[3];
-            for(int i = 0; i < 3; i++) box[i] = box_in[i];
+        box = new double[3];
+        for(int i = 0; i < 3; i++) box[i] = box_in[i];
     }
 
     ~_DensFromSnaps(){
@@ -64,8 +64,8 @@ public:
         lc_p.clear();
     }
 
-    void advance_snap(real_t *pos, real_t *vel, idx_t *ids, real_t lc_r,
-                      real_t tau, real_t dtau, real_t a_dot, real_t a, idx_t np) {
+    void advance_snap(T *pos, T *vel, idx_t *ids, double lc_r,
+                      double tau, double dtau, T a_dot, T a, idx_t np) {
 
         max_move_x = ceil(2*lc_r / box[0]);
         max_move_y = ceil(2*lc_r / box[1]);
@@ -76,37 +76,37 @@ public:
             for(int mx = -max_move_x; mx <= max_move_x; mx++){
                 for(int my = - max_move_y; my <= max_move_y; my++){
                     for(int mz = -max_move_z; mz <= max_move_z; mz++){
-                        real_t x = id2pos[3 * ids[i] + 0] + box[0] * mx - obs[0];
-                        real_t y = id2pos[3 * ids[i] + 1] + box[1] * my - obs[1];
-                        real_t z = id2pos[3 * ids[i] + 2] + box[2] * mz - obs[2];
-                        real_t r = sqrt(PW2(x) + PW2(y) + PW2(z));
+                        double x = id2pos[3 * ids[i] + 0] + box[0] * mx - obs[0];
+                        double y = id2pos[3 * ids[i] + 1] + box[1] * my - obs[1];
+                        double z = id2pos[3 * ids[i] + 2] + box[2] * mz - obs[2];
+                        double r = sqrt(PW2(x) + PW2(y) + PW2(z));
 
                         // if alread outside the lightcone
                         if(r > lc_r) continue;
 
-                        real_t next_x = pos[3 * i + 0] + box[0] * mx - obs[0];
-                        real_t next_y = pos[3 * i + 1] + box[1] * my - obs[1];
-                        real_t next_z = pos[3 * i + 2] + box[2] * mz - obs[2];
-                        real_t next_r = sqrt(PW2(next_x) + PW2(next_y) + PW2(next_z));
+                        double next_x = pos[3 * i + 0] + box[0] * mx - obs[0];
+                        double next_y = pos[3 * i + 1] + box[1] * my - obs[1];
+                        double next_z = pos[3 * i + 2] + box[2] * mz - obs[2];
+                        double next_r = sqrt(PW2(next_x) + PW2(next_y) + PW2(next_z));
 
                         if(next_r < lc_r - dtau) continue;
 
-                        real_t vx = id2vel[3 * ids[i] + 0];
-                        real_t vy = id2vel[3 * ids[i] + 1];
-                        real_t vz = id2vel[3 * ids[i] + 2];
+                        double vx = id2vel[3 * ids[i] + 0];
+                        double vy = id2vel[3 * ids[i] + 1];
+                        double vz = id2vel[3 * ids[i] + 2];
 
-                        real_t alpha = + 0.5 *
+                        double alpha = + 0.5 *
                             (PW2(x * vx + y * vy + z * vz) / PW3(r) -
                              (vx * vx + vy * vy + vz * vz) / r );
 
-                        real_t beta = -1.0 - (x * vx + y * vy + z * vz) / r;
-                        real_t gamma = -(tau) - r;
+                        double beta = -1.0 - (x * vx + y * vy + z * vz) / r;
+                        double gamma = -(tau) - r;
 
-                        real_t dt = -gamma / beta - alpha *  PW2(gamma) / PW3(beta);
+                        double dt = -gamma / beta - alpha *  PW2(gamma) / PW3(beta);
                         if(PW2(beta) - 4.0 * alpha * gamma >= 0 ){
-                            real_t dt1 = (-beta + sqrt(PW2(beta) - 4.0 * alpha * gamma))
+                            double dt1 = (-beta + sqrt(PW2(beta) - 4.0 * alpha * gamma))
                                 / (2.0 * alpha);
-                            real_t dt2 = (-beta - sqrt(PW2(beta) - 4.0 * alpha * gamma))
+                            double dt2 = (-beta - sqrt(PW2(beta) - 4.0 * alpha * gamma))
                                 / (2.0 * alpha);
                             if(dt1 > 0 && dt1 < dtau)
                                 dt = dt1;
@@ -116,12 +116,12 @@ public:
 
                         if(dt < 0 || dt > dtau) continue;
 
-                        real_t lc_x = x + vx * dt;
-                        real_t lc_y = y + vy * dt;
-                        real_t lc_z = z + vz * dt;
-                        std::vector<real_t> vec{lc_x, lc_y, lc_z, vx, vy, vz};
+                        T lc_x = x + vx * dt;
+                        T lc_y = y + vy * dt;
+                        T lc_z = z + vz * dt;
+                        std::vector<T> vec{lc_x, lc_y, lc_z, (T)vx, (T)vy, (T)vz};
 
-                        #pragma omp critical
+#pragma omp critical
                         std::copy(begin(vec), end(vec), std::back_inserter(lc_p));
                     }
                 }
@@ -130,7 +130,7 @@ public:
         }
     }
 
-    void update_pos_map(real_t * pos, real_t * vel, idx_t *ids, idx_t np){
+    void update_pos_map(T * pos, T * vel, idx_t *ids, idx_t np){
 
 #pragma omp parallel for
         for(idx_t i = 0; i < np; i++){
@@ -150,8 +150,8 @@ public:
 
     }
 
-    void proc_snap(real_t * pos, real_t * vel, idx_t *ids, real_t tau,
-                   real_t dtau, real_t a, real_t H, bool is_first_snap) {
+    void proc_snap(T * pos, T * vel, idx_t *ids, double tau,
+                   double dtau, T a, T H, bool is_first_snap) {
         if(is_first_snap == true){
             update_pos_map(pos, vel, ids, n_tot_part);
         }
@@ -161,8 +161,8 @@ public:
         }
     }
 
-    void proc_snap_chunk(real_t * pos, real_t * vel, idx_t *ids, real_t tau,
-                         real_t dtau, real_t a, real_t H, idx_t np, bool is_first_snap) {
+    void proc_snap_chunk(T * pos, T * vel, idx_t *ids, double tau,
+                         double dtau, T a, T H, idx_t np, bool is_first_snap) {
         if(is_first_snap == true){
             update_pos_map(pos, vel, ids, np);
         }

@@ -19,6 +19,12 @@ import lcmetric.cutils as utC
 class Lightcone:
     def __init__(self, origin, cosmo_paras, L_snap, N_snap, NR, NSIDE,
                  **keyws):
+        # dytpe only govens array data type regarding to any
+        # particle data, including their pos, vel, pot, AND
+        # any data on lightcone mesh. All other float data
+        # is in double
+        self.pdtype = keyws.get('dtype', 'f8')
+
         self.L_snap = L_snap
         self.N_snap = N_snap
         self.NR = NR
@@ -26,10 +32,13 @@ class Lightcone:
         self.NPIX = 12 * self.NSIDE**2
 
         self.cosmo_paras = cosmo_paras
-        self.origin = npy.array(origin, dtype=npy.double)
 
+        self.origin = npy.array(origin, dtype=npy.double)
         self.theta_list, self.phi_list = hp.pix2ang(NSIDE,
                                                     range(12 * NSIDE**2))
+        self.theta_list = npy.ascontiguousarray(self.theta_list,
+                                                dtype=npy.double)
+        self.phi_list = npy.ascontiguousarray(self.phi_list, dtype=npy.double)
 
         self.dx = npy.array([self.L_snap / self.N_snap] * 3)
 
@@ -79,7 +88,8 @@ class Lightcone:
     def read_snap_density(self, path, snap_type, a):
         if (snap_type == 'CSV'):
             # Start reading initial snapshot and setting initial data
-            f = CSVCatalog(path, ['x', 'y', 'z', 'vx', 'vy', 'vz', 'phi'])
+            f = CSVCatalog(path, ['x', 'y', 'z', 'vx', 'vy', 'vz', 'phi'],
+                           dtype=self.pdtype)
 
             f['Position'] = (f['x'][:, None]) * [1/self.hL_unit, 0, 0] \
                 + (f['y'][:, None]) * [0, 1/self.hL_unit, 0] \
@@ -111,7 +121,8 @@ class Lightcone:
             raise ValueError('Snap data type is not supported!')
 
         self.N_snap_part = f['Position'].shape[0]
-        return ((f.to_mesh(self.N_snap).to_real_field(normalize=False) *
+        return ((f.to_mesh(self.N_snap,
+                           dtype=self.pdtype).to_real_field(normalize=False) *
                  (self.N_snap**3 / self.N_snap_part) - 1.0) *
                 (1.5 * (self.cosmo_paras['h'] * 100)**2 *
                  self.cosmo_paras['Omega_m'] / a))
@@ -121,19 +132,32 @@ class Lightcone:
             r * npy.sin(theta_list) * npy.cos(phi_list) + self.origin[0],
             r * npy.sin(theta_list) * npy.sin(phi_list) + self.origin[1],
             r * npy.cos(theta_list) + self.origin[2]
-        ])
+        ],
+                           dtype=self.pdtype)
         x_list = npy.ascontiguousarray(npy.transpose(x_list))
 
-        Phi = npy.ascontiguousarray(
-            ut.inverse_Lap(rf, self.L_snap, self.N_snap))
+        Phi = npy.ascontiguousarray(ut.inverse_Lap(rf, self.L_snap,
+                                                   self.N_snap),
+                                    dtype=self.pdtype)
         Pi = utC.f_r_derv(Phi, npy.array([self.L_snap / self.N_snap] * 3), r,
                           x_list)
         Phi = utC.interp(Phi, self.dx, x_list)
 
         return (Phi, Pi)
 
+    def init_build_lcmetric(self):
+        self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
+                                 self.Phi_i, self.Pi_i, self.cosmo_paras,
+                                 self.final_r, self.Phi_f)
+        self.met.build_lcmetric()
+
     def build_lcmetric(self):
         self.met.build_lcmetric()
+
+    def init_metric(self):
+        self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
+                                 self.Phi_i, self.Pi_i, self.cosmo_paras,
+                                 self.final_r, self.Phi_f)
 
 
 class LightconeFromConePhi(Lightcone):
@@ -153,9 +177,10 @@ class LightconeFromConePhi(Lightcone):
                  zel_z=None,
                  Phi_zel_path=None,
                  cone_type='UNFORMATTED',
-                 snap_type='Gadget1'):
+                 snap_type='Gadget1',
+                 **kwargs):
         Lightcone.__init__(self, origin, cosmo_paras, L_snap, N_snap, NR,
-                           NSIDE)
+                           NSIDE, **kwargs)
 
         self.init_z = init_z
         self.final_z = final_z
@@ -192,12 +217,15 @@ class LightconeFromConePhi(Lightcone):
             Phi_snap_I = 5 * ut.inverse_Lap(Phi_snap_I, self.L_snap,
                                             self.N_snap)
 
-            rf_i0 = npy.ascontiguousarray(
-                ut.inverse_derv(Phi_snap_I, L_snap, N_snap, 0))
-            rf_i1 = npy.ascontiguousarray(
-                ut.inverse_derv(Phi_snap_I, L_snap, N_snap, 1))
-            rf_i2 = npy.ascontiguousarray(
-                ut.inverse_derv(Phi_snap_I, L_snap, N_snap, 2))
+            rf_i0 = npy.ascontiguousarray(ut.inverse_derv(
+                Phi_snap_I, L_snap, N_snap, 0),
+                                          dtype=self.pdtype)
+            rf_i1 = npy.ascontiguousarray(ut.inverse_derv(
+                Phi_snap_I, L_snap, N_snap, 1),
+                                          dtype=self.pdtype)
+            rf_i2 = npy.ascontiguousarray(ut.inverse_derv(
+                Phi_snap_I, L_snap, N_snap, 2),
+                                          dtype=self.pdtype)
 
         self.delta, self.vw, counts, self.met.sols['Phi'] = \
             self.read_lc_density_phi(cone_path, cone_type, rf_i0, rf_i1, rf_i2)
@@ -218,14 +246,14 @@ class LightconeFromConePhi(Lightcone):
             chunk=20000000,
             np=7,
     ):
-        delta = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
+        delta = npy.zeros((self.NR + 2, self.NPIX), dtype=self.pdtype)
         delta.fill(-1)
-        vw = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
-        counts = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
+        vw = npy.zeros((self.NR + 2, self.NPIX), dtype=self.pdtype)
+        counts = npy.zeros((self.NR + 2, self.NPIX), dtype=self.pdtype)
         count_density = 1 / (self.L_snap / self.N_snap)**3 \
             / (self.N_snap**3 / self.N_snap_part)
 
-        Phi = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
+        Phi = npy.zeros((self.NR + 2, self.NPIX), dtype=self.pdtype)
         if (cone_type == 'UNFORMATTED'):
             files = glob.glob(path)
             self.N_lc_part = 0
@@ -238,21 +266,21 @@ class LightconeFromConePhi(Lightcone):
                 cnt += ut.unf_read_file(file, pdata, np)
                 if (cnt >= chunk or i == len(files) - 1):
                     pdata = npy.ascontiguousarray(
-                        npy.array(pdata).reshape(cnt, np)[:, 0:np])\
+                        npy.array(pdata).reshape(cnt, np)[:, 0:np], dtype=self.pdtype)\
                         * npy.array([1/self.hL_unit, 1/self.hL_unit, 1/self.hL_unit,
-                                     1/3e5, 1/3e5, 1/3e5, 1])
+                                     1/3e5, 1/3e5, 1/3e5, 1], dtype=self.pdtype)
 
                     if (self.zel_z is not None):
                         pdata += \
                             utC.interp(rf_i0, self.dx,
                                        npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
-                            * [1, 0, 0, 0, 0, 0, 0] + \
+                            * npy.array([1, 0, 0, 0, 0, 0, 0], dtype=self.pdtype) + \
                             utC.interp(rf_i1, self.dx,
                                        npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
-                            * [0, 1, 0, 0, 0, 0, 0] + \
+                            * npy.array([0, 1, 0, 0, 0, 0, 0], dtype=self.pdtype) + \
                             utC.interp(rf_i2, self.dx,
                                        npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
-                            * [0, 0, 1, 0, 0, 0, 0]
+                            * npy.array([0, 0, 1, 0, 0, 0, 0], dtype=self.pdtype)
                     lc_CIC.deposit_with_wgt(pdata, self.origin, delta,
                                             count_density, vw, counts,
                                             self.init_r, self.final_r, self.NR,
@@ -267,7 +295,7 @@ class LightconeFromConePhi(Lightcone):
 
         elif (cone_type == 'CSV'):
             f = CSVCatalog(path, ['x', 'y', 'z', 'vx', 'vy', 'vz', 'phi'],
-                           dtype='f8')
+                           dtype=self.pdtype)
             f['Particles'] = \
                 (f['x'][:, None]) \
                 * npy.array([1 / self.hL_unit, 0, 0, 0, 0, 0, 1]) \
@@ -297,8 +325,9 @@ class LightconeFromConePhi(Lightcone):
                         utC.interp(rf_i2, self.dx,
                                    npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
                                    * [0,0,1,0,0,0,0]
-                    lc_CIC.deposit_with_wgt(pdata, self.origin, delta, count_density, \
-                                            vw, counts, self.init_r, self.final_r, self.NR,
+                    lc_CIC.deposit_with_wgt(pdata, self.origin, delta,
+                                            count_density, vw, counts,
+                                            self.init_r, self.final_r, self.NR,
                                             self.NSIDE, Phi)
             vw /= counts
             vw = npy.nan_to_num(vw)
@@ -396,10 +425,10 @@ class LightconeFromCone(Lightcone):
         # Final comoving distance
         self.final_r = scpy.integrate.quad(self.Hint, 0, final_z)[0]
 
-        self.a = npy.array([
+        self.a_shift = npy.array([
             1 / (1 + scpy.optimize.minimize_scalar(
-                self.inverse_Hint, args=(self.to_r(n, self.NR))).x)
-            for n in range(NR + 1)
+                self.inverse_Hint, args=(self.to_r(n - 1, self.NR))).x)
+            for n in range(NR + 3)
         ])
 
         if (zel_z is not None):
@@ -434,23 +463,21 @@ class LightconeFromCone(Lightcone):
             Phi_snap_I = 5 * ut.inverse_Lap(Phi_snap_I, self.L_snap,
                                             self.N_snap)
 
-            rf_i0 = npy.ascontiguousarray(
-                ut.inverse_derv(Phi_snap_I, L_snap, N_snap, 0))
-            rf_i1 = npy.ascontiguousarray(
-                ut.inverse_derv(Phi_snap_I, L_snap, N_snap, 1))
-            rf_i2 = npy.ascontiguousarray(
-                ut.inverse_derv(Phi_snap_I, L_snap, N_snap, 2))
+            rf_i0 = npy.ascontiguousarray(ut.inverse_derv(
+                Phi_snap_I, L_snap, N_snap, 0),
+                                          dtype=self.pdtype)
+            rf_i1 = npy.ascontiguousarray(ut.inverse_derv(
+                Phi_snap_I, L_snap, N_snap, 1),
+                                          dtype=self.pdtype)
+            rf_i2 = npy.ascontiguousarray(ut.inverse_derv(
+                Phi_snap_I, L_snap, N_snap, 2),
+                                          dtype=self.pdtype)
 
         # reading light-cone
         self.delta, self.vw, counts = \
             self.read_lc_density(cone_path, cone_type, rf_i0, rf_i1, rf_i2,
                                  lensing_kappa=lensing_kappa)
 
-        self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
-                                 self.Phi_i, self.Pi_i, self.cosmo_paras,
-                                 self.final_r, self.Phi_f)
-
-    def init_metric(self):
         self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
                                  self.Phi_i, self.Pi_i, self.cosmo_paras,
                                  self.final_r, self.Phi_f)
@@ -490,16 +517,18 @@ class LightconeFromCone(Lightcone):
                         chunk=20000000,
                         np=7,
                         lensing_kappa=False):
-        delta = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
+        delta = npy.zeros((self.NR + 2, self.NPIX), dtype=self.pdtype)
         delta.fill(-1)
-        vw = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
-        counts = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
+        vw = npy.zeros((self.NR + 2, self.NPIX), dtype=self.pdtype)
+        counts = npy.zeros((self.NR + 2, self.NPIX), dtype=self.pdtype)
         count_density = 1 / (self.L_snap / self.N_snap)**3 \
             / (self.N_snap**3 / self.N_snap_part)
 
         if (lensing_kappa is True):
-            self.kappa1 = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
-            self.kappa2 = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
+            self.kappa1 = npy.zeros((self.NR + 2, self.NPIX),
+                                    dtype=self.pdtype)
+            self.kappa2 = npy.zeros((self.NR + 2, self.NPIX),
+                                    dtype=self.pdtype)
 
         if (cone_type == 'UNFORMATTED'):
             files = glob.glob(path)
@@ -512,9 +541,9 @@ class LightconeFromCone(Lightcone):
                 cnt += self.unf_read_file(file, pdata, np)
                 if (cnt >= chunk or i == len(files) - 1):
                     pdata = npy.ascontiguousarray(
-                        npy.array(pdata).reshape(cnt, np)[:, 0:6])\
+                        npy.array(pdata).reshape(cnt, np)[:, 0:6], dtype=self.pdtype)\
                         * npy.array([1/self.hL_unit, 1/self.hL_unit, 1/self.hL_unit,
-                                     1/3e5, 1/3e5, 1/3e5])
+                                     1/3e5, 1/3e5, 1/3e5], dtype=self.pdtype)
 
                     if (self.zel_z is not None):
                         pdata += \
@@ -531,7 +560,7 @@ class LightconeFromCone(Lightcone):
                                    vw, counts, self.init_r, self.final_r, self.NR,
                                    self.NSIDE, 0)
                     if (lensing_kappa is True):
-                        lc_CIC.lensing_kappa_deposit(pdata, self.a,
+                        lc_CIC.lensing_kappa_deposit(pdata, self.a_shift,
                                                      self.origin, self.kappa1,
                                                      self.kappa2, self.init_r,
                                                      self.final_r, self.NR,
@@ -543,7 +572,7 @@ class LightconeFromCone(Lightcone):
             vw = npy.nan_to_num(vw)
         elif (cone_type == 'CSV'):
             f = CSVCatalog(path, ['x', 'y', 'z', 'vx', 'vy', 'vz', 'phi'],
-                           dtype='f8')
+                           dtype=self.pdtype)
             f['Particles'] = \
                 (f['x'][:, None]) \
                 * npy.array([1 / self.hL_unit, 0, 0, 0, 0, 0]) \
@@ -577,7 +606,7 @@ class LightconeFromCone(Lightcone):
                                    vw, counts, self.init_r, self.final_r, self.NR,
                                    self.NSIDE, 0)
                     if (lensing_kappa is True):
-                        lc_CIC.lensing_kappa_deposit(pdata, self.a,
+                        lc_CIC.lensing_kappa_deposit(pdata, self.a_shift,
                                                      self.origin, self.kappa1,
                                                      self.kappa2, self.init_r,
                                                      self.final_r, self.NR,
@@ -736,7 +765,7 @@ class LightconeFromSnaps(Lightcone):
             self.a = npy.array([1/(1+scpy.optimize.minimize_scalar(
                 self.inverse_Hint, args=(self.to_r(n, self.NR))).x) \
                               for n in range(self.NR+1)])
-            self.Phi = npy.zeros((self.NR + 1, self.NPIX))
+            self.Phi = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
 
             for fi in range(init_snap_i, final_snap_i - 1, -1):
 
@@ -744,23 +773,24 @@ class LightconeFromSnaps(Lightcone):
 
                 files[fi]['Position'] *= 1 / self.hL_unit
                 files[fi].attrs['BoxSize'] = self.L_snap
-                rf = (files[fi].to_mesh(self.N_snap).to_real_field(normalize=False)  \
+                rf = (files[fi].to_mesh(self.N_snap, dtype=self.pdtype).to_real_field(normalize=False)  \
                     * ( self.N_snap**3 / files[fi]['Position'].shape[0] )  - 1.0 )
 
                 rf *= (1.5 * (cosmo_paras['h'] * 100)**2 *
                        cosmo_paras['Omega_m'] / self.a[ni])
-                snap = npy.ascontiguousarray(
-                    ut.inverse_Lap(rf, self.L_snap, self.N_snap))
+                snap = npy.ascontiguousarray(ut.inverse_Lap(
+                    rf, self.L_snap, self.N_snap),
+                                             dtype=self.pdtype)
                 r = scpy.integrate.quad(self.Hint, 0,
                                         files[fi].attrs['Redshift'])[0]
                 print(str(ni) + ' ' + str(r) + ' ' + str(self.a[ni]),
                       flush=True)
-                self.Phi[ni] = utC.interp(snap, rf.BoxSize/rf.Nmesh,
+                self.Phi[ni] = utC.interp(snap, npy.array(rf.BoxSize/rf.Nmesh),
                     npy.ascontiguousarray([ [\
                     r * npy.sin(self.theta_list[i]) * npy.cos(self.phi_list[i]) + origin[0],\
                     r * npy.sin(self.theta_list[i]) * npy.sin(self.phi_list[i]) + origin[1],\
                     r * npy.cos(self.theta_list[i]) + origin[2]]  \
-                    for i in range(self.NPIX)]))
+                                            for i in range(self.NPIX)], dtype=self.pdtype))
                 #del files[fi]
             self.met.sols['Phi'] = self.Phi
             return
@@ -770,7 +800,7 @@ class LightconeFromSnaps(Lightcone):
         # (final_r, init_r)
         self.a_shift = npy.ascontiguousarray([1 / (1+scpy.optimize.minimize_scalar(
             self.inverse_Hint, args=(self.to_r(n - 1, self.NR))).x) \
-                          for n in range(NR+3)])
+                                              for n in range(NR+3)])
 
         print("No. of snaps is " + str(self.n_snaps) +
               ", and No. of particles in each snap is " +
@@ -799,31 +829,36 @@ class LightconeFromSnaps(Lightcone):
 
             Phi_snap_I = 5 * ut.inverse_Lap(Phi_snap_I, self.L_snap,
                                             self.N_snap)
-            rf_i0 = npy.ascontiguousarray(
-                ut.inverse_derv(Phi_snap_I, L_snap, N_snap, 0))
-            rf_i1 = npy.ascontiguousarray(
-                ut.inverse_derv(Phi_snap_I, L_snap, N_snap, 1))
-            rf_i2 = npy.ascontiguousarray(
-                ut.inverse_derv(Phi_snap_I, L_snap, N_snap, 2))
+            rf_i0 = npy.ascontiguousarray(ut.inverse_derv(
+                Phi_snap_I, L_snap, N_snap, 0),
+                                          dtype=self.pdtype)
+            rf_i1 = npy.ascontiguousarray(ut.inverse_derv(
+                Phi_snap_I, L_snap, N_snap, 1),
+                                          dtype=self.pdtype)
+            rf_i2 = npy.ascontiguousarray(ut.inverse_derv(
+                Phi_snap_I, L_snap, N_snap, 2),
+                                          dtype=self.pdtype)
 
         self.N_snap_part = files[0]['Position'].shape[0]
 
-        self.snap_den = dens.DensFromSnaps(origin, self.L_snap,
+        self.snap_den = dens.DensFromSnaps(self.origin, self.L_snap,
                                            files[0]['Position'].shape[0],
                                            self.init_r, self.cosmo_paras,
                                            self.hL_unit)
 
-        self.delta = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
+        self.delta = npy.zeros((self.NR + 2, self.NPIX), dtype=self.pdtype)
         self.delta.fill(-1)
-        self.vw = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
-        counts = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
+        self.vw = npy.zeros((self.NR + 2, self.NPIX), dtype=self.pdtype)
+        counts = npy.zeros((self.NR + 2, self.NPIX), dtype=self.pdtype)
         count_density = 1 / (self.L_snap / self.N_snap)**3 \
             / (self.N_snap**3 / self.N_snap_part)
         self.tot_p_num = 0
 
         if (lensing_kappa is True):
-            self.kappa1 = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
-            self.kappa2 = npy.zeros((self.NR + 2, self.NPIX), dtype=npy.double)
+            self.kappa1 = npy.zeros((self.NR + 2, self.NPIX),
+                                    dtype=self.pdtype)
+            self.kappa2 = npy.zeros((self.NR + 2, self.NPIX),
+                                    dtype=self.pdtype)
 
         ##########Reading slice by slice##############
         for fi in range(self.n_snaps - 1, -1, -1):
@@ -849,9 +884,10 @@ class LightconeFromSnaps(Lightcone):
             for p, v, i, in zip(files[fi]['Position'].partitions,
                                 files[fi]['GadgetVelocity'].partitions,
                                 files[fi]['ID'].partitions):
-                pos = npy.ascontiguousarray(p / self.hL_unit, dtype=npy.double)
+                pos = npy.ascontiguousarray(p / self.hL_unit,
+                                            dtype=self.pdtype)
                 vel = npy.ascontiguousarray(v * (npy.sqrt(a) / (3e5)),
-                                            dtype=npy.double)
+                                            dtype=self.pdtype)
                 IDs = npy.ascontiguousarray(i)
 
                 state = self.snap_den.proc_snap_chunk(pos, vel, IDs, tau, dtau)

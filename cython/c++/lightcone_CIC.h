@@ -6,42 +6,40 @@
 #include "healpix_base.h"
 
 
-typedef double real_t;
 typedef long long idx_t;
 
-inline int CHI2CHIBIN(real_t r, real_t dr)
+
+#define CHI2CHIBIN(r, dr) std::floor ((r) / (dr));
+
+inline idx_t IDX(int nr, int pix, idx_t NPIX)
 {
-  return std::floor ((r) / dr);
+    return (idx_t)nr*NPIX + (idx_t)pix;
 }
 
-inline idx_t IDX(int nr, int pix, int NPIX)
-{
-    return (idx_t)nr*NPIX + pix;
-}
-
-void kappa_deposit(real_t *particles, real_t *a, real_t *origin,
-                   real_t *kappa1, real_t *kappa2, idx_t nparticles,
-                   real_t max_r, real_t min_r, int NR, int NSIDE)
+template<typename T>
+void kappa_deposit(T *particles, double* a, double *origin,
+                   T *kappa1, T *kappa2, idx_t nparticles,
+                   double max_r, double min_r, int NR, int NSIDE)
 {
     T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
         ( NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE );
 
-    real_t dr = (max_r - min_r) / NR;
+    double dr = (max_r - min_r) / NR;
 
     idx_t NPIX = 12*NSIDE*NSIDE;
 
 #pragma omp parallel for
     for(idx_t p = 0; p < nparticles; p++){
-        real_t x = particles[p*6 + 0] - origin[0];
-        real_t y = particles[p*6 + 1] - origin[1];
-        real_t z = particles[p*6 + 2] - origin[2];
+        double x = particles[p*6 + 0] - origin[0];
+        double y = particles[p*6 + 1] - origin[1];
+        double z = particles[p*6 + 2] - origin[2];
 
-        real_t r = std::sqrt(x*x + y*y + z*z);
+        double r = std::sqrt(x*x + y*y + z*z);
         // get chi, theta, phi
-        real_t theta = std::acos(z/r);
+        double theta = std::acos(z/r);
         if(theta < -0.1) throw(-1);
         if(theta >= M_PI) theta = M_PI - 1.0e-6; // correct for floating point error
-        real_t phi = std::atan2(y, x);
+        double phi = std::atan2(y, x);
         if(phi <= 0.0) { phi = 2.0*M_PI + phi; } // atan2 in range (-pi,pi) -> (0,2pi)
         if(phi >= 2.0*M_PI) phi = 2.0*M_PI - 1.0e-6;
 
@@ -50,14 +48,14 @@ void kappa_deposit(real_t *particles, real_t *a, real_t *origin,
 
         if(icp >= NR + 2 || ic < -1) continue;
 
-        real_t dc = (r-min_r) / dr - (real_t)ic;
+        double dc = (r-min_r) / dr - (double)ic;
 
-        real_t tc = 1.0 - dc;
+        double tc = 1.0 - dc;
 
         pointing ptg = pointing(theta, phi);
         auto pix = HP->ang2pix(ptg);
 
-        real_t ap = a[ic+1] * tc + a[icp+1] * dc;
+        double ap = a[ic+1] * tc + a[icp+1] * dc;
         if(dc <= 0.5 && ic >= 0){
 #pragma omp atomic
             kappa1[IDX(ic, pix, NPIX)] += 1.0 / ap / r;
@@ -74,153 +72,155 @@ void kappa_deposit(real_t *particles, real_t *a, real_t *origin,
 
 }
 
-void CIC_deposit(real_t *particles, real_t *origin, real_t *delta,
-                 real_t *vw, real_t *counts,
-                 idx_t nparticles, real_t count_density,
-                 real_t max_r, real_t min_r, int NR, int NSIDE, int vx_is_weight)
+template<typename T>
+void CIC_deposit(T *particles, double *origin, T *delta,
+                 T *vw, T *counts,
+                 idx_t nparticles, double count_density,
+                 double max_r, double min_r, int NR, int NSIDE, int vx_is_weight)
 {
     // Healpix instance
     T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
         ( NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE );
 
-    real_t dr = (max_r - min_r) / NR;
+    double dr = (max_r - min_r) / NR;
 
     idx_t NPIX = 12*NSIDE*NSIDE;
 
 #pragma omp parallel for
     for(idx_t p = 0; p < nparticles; p++)
     {
-        real_t x = particles[p*6 + 0] - origin[0];
-        real_t y = particles[p*6 + 1] - origin[1];
-        real_t z = particles[p*6 + 2] - origin[2];
-        real_t vx = particles[p*6 + 3];
-        real_t vy = particles[p*6 + 4];
-        real_t vz = particles[p*6 + 5];
+        double x = particles[p*6 + 0] - origin[0];
+        double y = particles[p*6 + 1] - origin[1];
+        double z = particles[p*6 + 2] - origin[2];
+        double vx = particles[p*6 + 3];
+        double vy = particles[p*6 + 4];
+        double vz = particles[p*6 + 5];
 
-        real_t r = std::sqrt(x*x + y*y + z*z);
+        double r = std::sqrt(x*x + y*y + z*z);
         // get chi, theta, phi
-        real_t theta = std::acos(z/r);
+        double theta = std::acos(z/r);
         if(theta < -0.1) throw(-1);
         if(theta >= M_PI) theta = M_PI - 1.0e-6; // correct for floating point error
-        real_t phi = std::atan2(y, x);
+        double phi = std::atan2(y, x);
         if(phi <= 0.0) { phi = 2.0*M_PI + phi; } // atan2 in range (-pi,pi) -> (0,2pi)
         if(phi >= 2.0*M_PI) phi = 2.0*M_PI - 1.0e-6;
 
-        real_t vr = (vx * x + vy * y + vz * z) / r;
+        double vr = (vx * x + vy * y + vz * z) / r;
 
         if(vx_is_weight > 0)
-        {
-            vr = vx;
-        }
+         {
+             vr = vx;
+         }
 
-        int ic = CHI2CHIBIN(r-min_r, dr);
-        int icp = ic+1;
+         int ic = CHI2CHIBIN(r-min_r, dr);
+         int icp = ic+1;
 
-        if(icp >= NR + 2 || ic < -1) continue;
+         if(icp >= NR + 2 || ic < -1) continue;
 
-        real_t chi_min = r - dr/2.0;
-        real_t chi_max = r + dr/2.0;
-        real_t expected_counts = count_density * 4.0/3.0*M_PI*(
-            std::pow(chi_max,3) - std::pow(chi_min,3) ) / ((real_t)\
-                                                           NPIX);
+         double chi_min = r - dr/2.0;
+         double chi_max = r + dr/2.0;
+         double expected_counts = count_density * 4.0/3.0*M_PI*(
+             std::pow(chi_max,3) - std::pow(chi_min,3) ) / ((double)      \
+                                                            NPIX);
 
-        real_t dc = (r-min_r) / dr - (real_t)ic;
+         double dc = (r-min_r) / dr - (double)ic;
 
-        real_t tc = 1.0 - dc;
+         double tc = 1.0 - dc;
 
-        pointing ptg = pointing(theta, phi);
-        auto pix = fix_arr<int, 4>();
-        auto wgt = fix_arr<double, 4>();
-        HP->get_interpol(ptg, pix, wgt);
+         pointing ptg = pointing(theta, phi);
+         auto pix = fix_arr<int, 4>();
+         auto wgt = fix_arr<double, 4>();
+         HP->get_interpol(ptg, pix, wgt);
 
-        //CIC deposit
-        if( ic >= 0)
-        {
-            for(int i = 0 ; i < 4; i++)
-            {
+         //CIC deposit
+         if( ic >= 0)
+         {
+             for(int i = 0 ; i < 4; i++)
+             {
 #pragma omp atomic
-                delta[IDX(ic, pix[i], NPIX)] += 1.0/expected_counts*tc*wgt[i];
+                 delta[IDX(ic, pix[i], NPIX)] += 1.0/expected_counts*tc*wgt[i];
 #pragma omp atomic
-                delta[IDX(icp, pix[i], NPIX)] += 1.0/expected_counts*dc*wgt[i];
-
-#pragma omp atomic
-                counts[IDX(ic, pix[i], NPIX)] += tc*wgt[i];
-#pragma omp atomic
-                counts[IDX(icp, pix[i], NPIX)] += dc*wgt[i];
+                 delta[IDX(icp, pix[i], NPIX)] += 1.0/expected_counts*dc*wgt[i];
 
 #pragma omp atomic
-                vw[IDX(ic, pix[i], NPIX)] += vr*tc*wgt[i];
+                 counts[IDX(ic, pix[i], NPIX)] += tc*wgt[i];
 #pragma omp atomic
-                vw[IDX(icp, pix[i], NPIX)] += vr*dc*wgt[i];
-            }
-        }
-        else
-        {
-            for(int i = 0 ; i < 4; i++)
-            {
-#pragma omp atomic
-                delta[IDX(icp, pix[i], NPIX)] += 1.0/expected_counts*dc*wgt[i];
+                 counts[IDX(icp, pix[i], NPIX)] += dc*wgt[i];
 
 #pragma omp atomic
-                counts[IDX(icp, pix[i], NPIX)] += dc*wgt[i];
+                 vw[IDX(ic, pix[i], NPIX)] += vr*tc*wgt[i];
+#pragma omp atomic
+                 vw[IDX(icp, pix[i], NPIX)] += vr*dc*wgt[i];
+             }
+         }
+         else
+         {
+             for(int i = 0 ; i < 4; i++)
+             {
+#pragma omp atomic
+                 delta[IDX(icp, pix[i], NPIX)] += 1.0/expected_counts*dc*wgt[i];
 
 #pragma omp atomic
-                vw[IDX(icp, pix[i], NPIX)] += vr*dc*wgt[i];
-            }
-        }
-    }
+                 counts[IDX(icp, pix[i], NPIX)] += dc*wgt[i];
+
+#pragma omp atomic
+                 vw[IDX(icp, pix[i], NPIX)] += vr*dc*wgt[i];
+             }
+         }
+     }
 
 }
 
+template<typename T>
 void CIC_deposit_with_wgt(
-    real_t *particles, real_t *origin, real_t *delta, real_t *vw, real_t *counts,
-    idx_t nparticles, real_t count_density,
-    real_t max_r, real_t min_r, int NR, int NSIDE, real_t *weight)
+    T *particles, double *origin, T *delta, T *vw, T *counts,
+    idx_t nparticles, double count_density,
+    double max_r, double min_r, int NR, int NSIDE, T *weight)
 {
     // Healpix instance
     T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
 
         ( NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE );
-    real_t dr = (max_r - min_r) / NR;
+    double dr = (max_r - min_r) / NR;
 
     idx_t NPIX = 12*NSIDE*NSIDE;
 
 #pragma omp parallel for
     for(idx_t p = 0; p < nparticles; p++)
     {
-        real_t x = particles[p*7 + 0] - origin[0];
-        real_t y = particles[p*7 + 1] - origin[1];
-        real_t z = particles[p*7 + 2] - origin[2];
-        real_t vx = particles[p*7 + 3];
-        real_t vy = particles[p*7 + 4];
-        real_t vz = particles[p*7 + 5];
+        double x = particles[p*7 + 0] - origin[0];
+        double y = particles[p*7 + 1] - origin[1];
+        double z = particles[p*7 + 2] - origin[2];
+        double vx = particles[p*7 + 3];
+        double vy = particles[p*7 + 4];
+        double vz = particles[p*7 + 5];
 
-        real_t val = particles[p*7 + 6];
+        double val = particles[p*7 + 6];
 
-        real_t r = std::sqrt(x*x + y*y + z*z);
+        double r = std::sqrt(x*x + y*y + z*z);
         // get chi, theta, phi
-        real_t theta = std::acos(z/r);
+        double theta = std::acos(z/r);
         if(theta < -0.1) throw(-1);
         if(theta >= M_PI) theta = M_PI - 1.0e-6; // correct for floating point error
-        real_t phi = std::atan2(y, x);
+        double phi = std::atan2(y, x);
         if(phi <= 0.0) { phi = 2.0*M_PI + phi; } // atan2 in range (-pi,pi) -> (0,2pi)
         if(phi >= 2.0*M_PI) phi = 2.0*M_PI - 1.0e-6;
 
-        real_t vr = (vx * x + vy * y + vz * z) / r;
+        double vr = (vx * x + vy * y + vz * z) / r;
 
         int ic = CHI2CHIBIN(r-min_r, dr);
         int icp = ic+1;
 
         if(icp >= NR + 2 || ic < -1) continue;
 
-        real_t chi_min = r - dr/2.0;
-        real_t chi_max = r + dr/2.0;
-        real_t expected_counts = count_density * 4.0/3.0*M_PI*(
-            std::pow(chi_max,3) - std::pow(chi_min,3) ) / ((real_t) NPIX);
+        double chi_min = r - dr/2.0;
+        double chi_max = r + dr/2.0;
+        double expected_counts = count_density * 4.0/3.0*M_PI*(
+            std::pow(chi_max,3) - std::pow(chi_min,3) ) / ((double) NPIX);
 
-        real_t dc = (r-min_r) / dr - (real_t)ic;
+        double dc = (r-min_r) / dr - (double)ic;
 
-        real_t tc = 1.0 - dc;
+        double tc = 1.0 - dc;
 
         pointing ptg = pointing(theta, phi);
         auto pix = fix_arr<int, 4>();

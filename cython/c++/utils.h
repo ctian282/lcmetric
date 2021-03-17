@@ -12,8 +12,9 @@ typedef int idx_t;
 
 #define IDX(i, j, k, nx, ny, nz) ( ( ((i)%(nx) + nx)% nx ) * (ny) * (nz) + ( ( (j)%(ny) + ny)%ny ) * (nz) + ( ((k)%(nz) + nz)%nz ) )
 
-void _interp(real_t *d, real_t *dx, idx_t nx, idx_t ny, idx_t nz,
-             real_t *x_list, idx_t ns, real_t *res)
+template<typename T>
+void _interp(T *d, double *dx, int nx, int ny, int nz,
+             T *x_list, int ns, T *res)
 {
   #pragma omp parallel for
   for(int n = 0; n < ns; n++)
@@ -38,14 +39,4 @@ void _interp(real_t *d, real_t *dx, idx_t nx, idx_t ny, idx_t nz,
       res[n] += tempj * (1.0 - std::fabs(x_list[3*n+0] - (real_t)i * dx[0]) / dx[0] );
     }
   }
-}
-
-void _test_openmp()
-{
-    std::ofstream cout("omp_num.txt");
-    omp_set_dynamic(0);
-#pragma omp parallel
-    {
-        cout<<"No. of threads is "<<omp_get_num_threads()<<std::endl;
-    }
 }

@@ -7,8 +7,9 @@ import healpy as hp
 
 cimport cutils as cutils
 cimport numpy as npy
+cimport cython
 
-
+ctypedef cython.floating real_t
 # Using geometric unit,
 # when L = 3e5 Mpc, value of H = h *100
 L_UNIT = 3e5 # Mpc
@@ -24,11 +25,16 @@ def flap(ta, dx):
     return fderv2(ta, dx[0], 0) + fderv2(ta, dx[1], 1) + fderv2(ta, dx[2], 2)
 
 
-cpdef interp(real_t[:,:,::1] ta, real_t [:] dx, real_t[:,::1] x_list):
+cpdef interp(real_t[:,:,::1] ta, double [::1] dx, real_t[:,::1] x_list):
 
     cdef int ns = x_list.shape[0]
 
-    cdef npy.ndarray[real_t, ndim=1, mode='c'] val = npy.zeros(ns)
+    if real_t is float:
+        dtype = npy.float32
+    else:
+        dtype = npy.float64
+
+    cdef npy.ndarray[real_t, ndim=1, mode='c'] val = npy.zeros(ns, dtype=dtype)
 
     cutils._interp(&ta[0,0,0], &dx[0], ta.shape[0], ta.shape[1], ta.shape[2],\
                    &x_list[0,0], ns, &val[0])
@@ -37,12 +43,16 @@ cpdef interp(real_t[:,:,::1] ta, real_t [:] dx, real_t[:,::1] x_list):
 # Given a periodic snapshot data, calculate its d/dr
 # r maybe larger than the box size
 # Only linearly interpolate a sphere (r, nise)
-def f_r_derv(ta, dx, r, x_list):
+def f_r_derv(real_t[:,:, ::1]ta, double [::1] dx,
+             double r, real_t[:, ::1] x_list):
 
     # calcuate derivatives on all mesh here
-    derv1 = npy.ascontiguousarray(fderv1(ta, dx[0], 0))
-    derv2 = npy.ascontiguousarray(fderv1(ta, dx[1], 1))
-    derv3 = npy.ascontiguousarray(fderv1(ta, dx[2], 2))
+    cdef real_t[:, :, ::1] derv1 = \
+        npy.ascontiguousarray(fderv1(ta, dx[0], 0))
+    cdef real_t[:, :, ::1] derv2 = \
+        npy.ascontiguousarray(fderv1(ta, dx[1], 1))
+    cdef real_t[:, :, ::1] derv3 = \
+        npy.ascontiguousarray(fderv1(ta, dx[2], 2))
 
     return (  (x_list[:,0]) * interp(derv1, dx, x_list)
             + (x_list[:,1]) * interp(derv2, dx, x_list)
@@ -85,8 +95,3 @@ def scale(field, pks) :
 def fftFreqs(L, N) :
     ks = 2.0*npy.pi*npy.fft.fftfreq(N, L/N)
     return npy.sqrt( ks[:,None,None]**2 + ks[None,:,None]**2 + ks[None,None,:]**2 )
-
-
-cpdef test_openmp():
-
-    cutils._test_openmp()
