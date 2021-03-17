@@ -478,9 +478,9 @@ class LightconeFromCone(Lightcone):
             self.read_lc_density(cone_path, cone_type, rf_i0, rf_i1, rf_i2,
                                  lensing_kappa=lensing_kappa)
 
-        self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
-                                 self.Phi_i, self.Pi_i, self.cosmo_paras,
-                                 self.final_r, self.Phi_f)
+        # self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
+        #                          self.Phi_i, self.Pi_i, self.cosmo_paras,
+        #                          self.final_r, self.Phi_f)
 
     # Reading lp-cola unformatted files
     def unf_read_file(self, file, p_list=[], np=7):
@@ -937,7 +937,7 @@ class LightconeFromSnaps(Lightcone):
         self.vw = npy.nan_to_num(self.vw)
 
         del files
-        self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
-                                 self.Phi_i, self.Pi_i, self.cosmo_paras,
-                                 self.final_r, self.Phi_f)
+        # self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
+        #                          self.Phi_i, self.Pi_i, self.cosmo_paras,
+        #                          self.final_r, self.Phi_f)
         del self.snap_den

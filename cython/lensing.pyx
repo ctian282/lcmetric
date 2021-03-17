@@ -64,6 +64,7 @@ class Lensing:
             self.kappa2 = kwargs['kappa2']
             self.L_snap = kwargs['L_snap']
             self.N_snap_part = kwargs['N_snap_part']
+            self.cosmo_paras = kwargs['cosmo_paras']
         elif(mode is 'born_approx_snap'):
             self.Phi = self.met.sols['Phi']
             self.lmax = 2*NSIDE - 1
@@ -136,7 +137,8 @@ class Lensing:
     def gen_lc_lensing_conv(self, r):
         resol = 4*npy.pi / (self.NPIX)
         temp = \
-            1.5 * self.met.Hubble_0 ** 2 * self.met.Omega_m * \
+            1.5 * (self.cosmo_paras['h'] * 100) ** 2 \
+            * self.cosmo_paras['Omega_m'] * \
             self.L_snap**3 / self.N_snap_part / resol * \
             (self.kappa1 - self.kappa2 / r)
         lower_r_bin = \
