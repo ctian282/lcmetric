@@ -304,7 +304,7 @@ class Metric:
         for field in self.sols:
             if field == 'Phi':
                 print(indent+'Max error for field '+field+' is '+str(err) + ' at step '+str(max_step))
-                print(indent+'Relative error of the L2 norm is ' + str(rel_err))
+                print(indent+'Relative error of the L2 norm is ' + str(rel_err), flush=True)
 
     def relax(self, d, nsteps):
         while(nsteps > 0):
@@ -373,7 +373,7 @@ class Metric:
         n_vcycles = self.n_vcycles
         while(n_vcycles >0):
             n_vcycles -= 1
-            print('Starting v-cycle '+ str(self.n_vcycles - n_vcycles))
+            print('Starting v-cycle '+ str(self.n_vcycles - n_vcycles), flush=True)
 
             if(self.depth == 1):
                 upper_stroke = range(1)
@@ -383,7 +383,7 @@ class Metric:
                 self.relax(d, int(self.npre ))
 
                 if(d == 0 or self.verbose == True):
-                    print('    At level '+str(d)+', after '+str( int(self.npre) )+' relaxations')
+                    print('    At level '+str(d)+', after '+str( int(self.npre) )+' relaxations', flush=True)
                     self.est_errors(d, '    ')
 
                 if(d < self.depth - 1):
@@ -403,7 +403,7 @@ class Metric:
                 self.relax(d, int(self.npost ) )
 
                 if(self.verbose == True):
-                    print('    At level '+str(d)+', after '+str( int(self.npost ) )+' relaxations')
+                    print('    At level '+str(d)+', after '+str( int(self.npost ) )+' relaxations', flush=True)
                     self.est_errors(d, '    ')
                 if(d > 0):
                     self.hier_restrict(self.Phi_hier, d-1, self.rl_hier)
@@ -634,7 +634,7 @@ class Metric:
         self.Omega_L = Params['Omega_L']
 
         if( abs(self.Omega_m + self.Omega_L - 1.0) > 0.05 ):
-            print("Warning! the total energy fraction is deviating from 1!!!")
+            print("Warning! the total energy fraction is deviating from 1!!!", flush=True)
 
         self.init()
 
@@ -716,7 +716,7 @@ class Metric:
         self.Omega_L = Params['Omega_L']
 
         if( abs(self.Omega_m + self.Omega_L - 1.0) > 0.05 ):
-            print("Warning! the total energy fraction is deviating from 1!!!")
+            print("Warning! the total energy fraction is deviating from 1!!!", flush=True)
 
         self.init()
 

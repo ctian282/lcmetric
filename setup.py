@@ -50,4 +50,4 @@ setup(ext_modules=cythonize([
         language="c++",
     )
 ],
-                            language_level=2))
+                            language_level=3))
