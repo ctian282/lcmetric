@@ -362,6 +362,7 @@ class LightconeFromCone(Lightcone):
                  cone_type='CSV',
                  snap_type='Gadget1',
                  lensing_kappa=False,
+                 chunk=20000000,
                  **kwargs):
         """Initializing lightcone object from particle cone data.
 
@@ -476,7 +477,7 @@ class LightconeFromCone(Lightcone):
         # reading light-cone
         self.delta, self.vw, counts = \
             self.read_lc_density(cone_path, cone_type, rf_i0, rf_i1, rf_i2,
-                                 lensing_kappa=lensing_kappa)
+                                 lensing_kappa=lensing_kappa, chunk=chunk)
 
         # self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
         #                          self.Phi_i, self.Pi_i, self.cosmo_paras,
