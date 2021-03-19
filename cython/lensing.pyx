@@ -58,7 +58,7 @@ class Lensing:
             self.geo = geo.Geodesic(self.Phi, self.Pi, self.Omega,
                                     self.dPi_dr, self.a, self.NR,
                                     self.init_r, self.final_r, self.NSIDE,
-                                    ang_epsilon)
+                                    ang_epsilon=ang_epsilon)
         elif(mode is 'born_approx_lc'):
             self.kappa1 = kwargs['kappa1']
             self.kappa2 = kwargs['kappa2']
@@ -111,6 +111,7 @@ class Lensing:
         # Last step
         Psi += (r - self.to_tau(lr_idx)) * self.lensing_pot_int(r, lr_idx) \
 
+        # Doding laplacian
         Psi = -0.5 * hp.sphtfunc.alm2map(
                         (hp.sphtfunc.map2alm(Psi, lmax=self.lmax, iter=30)
                          * self.lm), nside=self.NSIDE)
@@ -145,7 +146,7 @@ class Lensing:
             int(npy.floor(
                 (r - self.final_r) / ((self.init_r - self.final_r) / self.NR)))
         res = temp[0:lower_r_bin+1, :].sum(axis=0)
-        lw = r - lower_r_bin * ((self.init_r - self.final_r) / self.NR)
+        lw = r - self.final_r - lower_r_bin * ((self.init_r - self.final_r) / self.NR)
         res += temp[lower_r_bin] * (1 - lw) + temp[lower_r_bin + 1] * lw;
         self.kappa_bins = temp
         return res

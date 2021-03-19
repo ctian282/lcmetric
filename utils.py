@@ -38,12 +38,13 @@ def flap(ta, dx):
 
 def interp_lc(ta, r, r_offset, dr):
     rl = npy.floor((r - r_offset) / dr).astype(int)
+
     if (rl + 1 >= ta.shape[0]):
         raise ValueError('r is too large!')
     elif (rl < 0):
         raise ValueError('r is too small!')
-    ans = (1 - npy.abs(r - rl * dr) / dr) * ta[rl] \
-        + (npy.abs(r - rl * dr) / dr) * ta[rl + 1]
+    ans = (1 - npy.abs(r - rl * dr - r_offset) / dr) * ta[rl] \
+        + (npy.abs(r - rl * dr - r_offset) / dr) * ta[rl + 1]
     return ans
 
 
