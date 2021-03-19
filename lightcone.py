@@ -205,7 +205,7 @@ class LightconeFromConePhi(Lightcone):
             self.zel_r = scpy.integrate.quad(self.Hint, 0, zel_z)[0]
 
         # print("Finishing reading snaps")
-        print("Starting reading lightcone data")
+        print("Starting reading lightcone data", flush=True)
 
         rf_i0 = None
         rf_i1 = None
@@ -440,18 +440,18 @@ class LightconeFromCone(Lightcone):
         self.Hi = self.H(self.init_z)
         self.Hf = self.H(self.final_z)
 
-        print("Starting reading initial snap")
+        print("Starting reading initial snap", flush=True)
         self.Phi_i, self.Pi_i = self.Phi_Pi_gen(
             self.read_snap_density(Phi_i_path, snap_type, self.init_a),
             self.init_r, self.theta_list, self.phi_list)
 
-        print("Starting reading final snap")
+        print("Starting reading final snap", flush=True)
         self.Phi_f, self.Pi_f = self.Phi_Pi_gen(
             self.read_snap_density(Phi_f_path, snap_type, self.final_a),
             self.final_r, self.theta_list, self.phi_list)
 
         # print("Finishing reading snaps")
-        print("Starting reading lightcone data")
+        print("Starting reading lightcone data", flush=True)
 
         rf_i0 = None
         rf_i1 = None
