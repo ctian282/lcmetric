@@ -758,7 +758,7 @@ class LightconeFromSnaps(Lightcone):
             """If we do want to build a lightcone mesh just based on snapshots
             data without any further information.
             """
-            self.NR = init_snap_i - final_snap_i + 1
+            self.NR = init_snap_i - final_snap_i
             print('Setting the radial resolution NR as ' + str(self.NR) +
                   'since we do want NR is N_snap',
                   flush=True)
@@ -778,13 +778,15 @@ class LightconeFromSnaps(Lightcone):
                     * ( self.N_snap**3 / files[fi]['Position'].shape[0] )  - 1.0 )
 
                 rf *= (1.5 * (cosmo_paras['h'] * 100)**2 *
-                       cosmo_paras['Omega_m'] / self.a[ni])
+                       cosmo_paras['Omega_m'] *
+                       (1 + files[fi].attrs['Redshift']))
                 snap = npy.ascontiguousarray(ut.inverse_Lap(
                     rf, self.L_snap, self.N_snap),
                                              dtype=self.pdtype)
                 r = scpy.integrate.quad(self.Hint, 0,
                                         files[fi].attrs['Redshift'])[0]
-                print(str(ni) + ' ' + str(r) + ' ' + str(self.a[ni]),
+                print(str(ni) + ' ' + str(r) + ' ' +
+                      str(files[fi].attrs['Redshift']),
                       flush=True)
                 self.Phi[ni] = utC.interp(snap, npy.array(rf.BoxSize/rf.Nmesh),
                     npy.ascontiguousarray([ [\
