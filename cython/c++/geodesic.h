@@ -24,14 +24,20 @@ typedef std::complex<double> cmpx_t;
 
 
 struct Photon{
+    // particle ID
     int pid;
+    // pointing direction: theta & phi
     pointing pt;
+    // current r position and scale factor a
     double r, a;
+
+    // derived fields
     double Phi, dPhi_dr, dPhi_dtheta, dPhi_dphi,
         dPhi_ddtheta, dPhi_ddphi, dPhi_dthetadphi,
         dPhi_drdtheta, dPhi_drdphi,
         Omega, dPhi_ddr, Phi_lap;
 
+    // fields of the particle
     GEODESIC_APPLY_TO_FIELDS(DECLARE_REAL_T);
     GEODESIC_APPLY_TO_COMPLEX_FIELDS(DECLARE_COMPLEX_T);
 };
@@ -45,16 +51,20 @@ public:
     double init_r, final_r;
     double dr, ang_epsilon;
 
-    int n_p, n_alm_idx;
+    // No. of particles
+    int n_p;
 
-
+    // Defining geodesic fields
     GEODESIC_APPLY_TO_FIELDS(RK2_FIELDS_ALL_CREATE);
     GEODESIC_APPLY_TO_COMPLEX_FIELDS(RK2_COMPLEX_FIELDS_ALL_CREATE);
-    //derived fields
+
+    // photon redshift
     double *z;
 
-
+    // Inpu fields
     T *Phi, *Pi, *Omega, *dPi_dr;
+
+    // stores targets' positions and scale factor
     double *tars, *a;
     // initial angular corrections
     double *ang_corrs, *d_diff_ang, *d_diff_tar_ang, *diff_s_ang;
@@ -64,9 +74,10 @@ public:
     // usually this happens when photon is very close to the pole
     int *tars_lower_bins;
 
-
+    // angle (theta and phi) of each Healpix pixel
     pointing *ang_list;
 
+    // Healpix map, used to generate alm
     Healpix_Map <double> Phi_s[2], Pi_s[2], Omega_s[2],
         Phi_s_ddr[2], Phi_s_dtheta[2], Phi_s_dphi[2],
         Phi_s_ddtheta[2], Phi_s_ddphi[2], Phi_s_dthetadphi[2],
@@ -79,10 +90,13 @@ public:
     Alm_Base * lm_base;
     int *l_list, *m_list;
 
+    // error logger
     std::ofstream cout;
 
+    // timers
     double hp_time_con, adv_time_con, tot_time_con;
 
+    // if consider shear terms
     bool enable_shear;
 
 
@@ -493,7 +507,7 @@ public:
         {
             if(n > tars_lower_bins[i]) continue;
 
-            Photon p;
+            Photon p = {0};
             set_photon_values(p, i, n, c);
             double dtau;
 
@@ -520,7 +534,7 @@ public:
         for(int i = 0; i < n_p; i++)
         {
             if(n > tars_lower_bins[i]) continue;
-            Photon p;
+            Photon p = {0};
             double dtau;
 
 
@@ -615,7 +629,7 @@ public:
         {
             if(tars_lower_bins[i] < 0) continue;
 
-            Photon p;
+            Photon p = {0};
 
             theta_a[i] = theta_f[i] = tars[6*i+1] + ang_corrs[2*i];
             phi_a[i] = phi_f[i] = tars[6*i+2] + ang_corrs[2*i+1];
@@ -659,6 +673,7 @@ public:
                 c = 1-c;
             }
 
+            // generate angular corret vectors
             gen_corrs();
 
             double max_s_ang = 0;
