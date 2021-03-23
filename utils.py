@@ -43,6 +43,7 @@ def interp_lc(ta, r, r_offset, dr):
         raise ValueError('r is too large!')
     elif (rl < 0):
         raise ValueError('r is too small!')
+    #print(npy.abs(r - rl * dr - r_offset) / dr)
     ans = (1 - npy.abs(r - rl * dr - r_offset) / dr) * ta[rl] \
         + (npy.abs(r - rl * dr - r_offset) / dr) * ta[rl + 1]
     return ans

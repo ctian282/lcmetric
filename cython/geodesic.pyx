@@ -65,42 +65,43 @@ cdef class Geodesic:
     ###############Functions getting class elements####################
     def DA(self):
         cdef int n_p = self.c_geo.n_p;
-        npy_arr = npy.asarray(<npy.float64_t[:n_p]> self.c_geo.DA_a)
+        npy_arr = npy.asarray(<double[:n_p]>self.c_geo.DA_a)
+        #npy_arr = npy.asarray(<npy.float64_t[:n_p]> self.c_geo.DA_a)
 
         return npy_arr;
 
     def dDAdt(self):
         cdef int n_p = self.c_geo.n_p;
-        npy_arr = npy.asarray(<npy.float64_t[:n_p]> self.c_geo.dDAdt_a)
+        npy_arr = npy.asarray(<double[:n_p]> self.c_geo.dDAdt_a)
 
         return npy_arr;
 
     def k0(self):
         cdef int n_p = self.c_geo.n_p;
-        npy_arr = npy.asarray(<npy.float64_t[:n_p]> self.c_geo.k0_a)
+        npy_arr = npy.asarray(<double[:n_p]> self.c_geo.k0_a)
 
         return npy_arr;
 
     def z(self):
         cdef int n_p = self.c_geo.n_p;
-        npy_arr = npy.asarray(<npy.float64_t[:n_p]> self.c_geo.z)
+        npy_arr = npy.asarray(<double[:n_p]> self.c_geo.z)
 
         return npy_arr;
 
     def ntheta_i(self):
         cdef int n_p = self.c_geo.n_p;
-        npy_arr = <npy.float64_t[:n_p*2]> self.c_geo.ang_corrs
+        npy_arr = npy.asarray(<double[:n_p*2]> self.c_geo.ang_corrs)
 
         return npy_arr;
 
     def nphi_i(self):
         cdef int n_p = self.c_geo.n_p;
-        npy_arr = <npy.float64_t[:n_p*2]> self.c_geo.ang_corrs
+        npy_arr = npy.asarray(<double[:n_p*2]> self.c_geo.ang_corrs)
 
         return npy_arr;
 
     def shooting_states(self):
         cdef int n_p = self.c_geo.n_p;
-        npy_arr = <int[:n_p]>self.c_geo.tars_lower_bins
+        npy_arr = npy.asarray(<int[:n_p]>self.c_geo.tars_lower_bins)
 
         return npy_arr;
