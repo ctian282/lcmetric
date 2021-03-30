@@ -335,15 +335,15 @@ public:
 
     double de2r_dt(Photon &p) {
         return 1.0 * 2.0 *
-            (p.e1r * p.dPhi_dr + p.e1theta * p.dPhi_dtheta + p.e1phi * p.dPhi_dphi);
+            (p.e2r * p.dPhi_dr + p.e2theta * p.dPhi_dtheta + p.e2phi * p.dPhi_dphi);
     }
     double de2theta_dt(Photon &p) {
         return p.ntheta * 2.0 *
-            (p.e1r * p.dPhi_dr + p.e1theta * p.dPhi_dtheta + p.e1phi * p.dPhi_dphi);
+            (p.e2r * p.dPhi_dr + p.e2theta * p.dPhi_dtheta + p.e2phi * p.dPhi_dphi);
     }
     double de2phi_dt(Photon &p) {
         return p.nphi * 2.0 *
-            (p.e1r * p.dPhi_dr + p.e1theta * p.dPhi_dtheta + p.e1phi * p.dPhi_dphi);
+            (p.e2r * p.dPhi_dr + p.e2theta * p.dPhi_dtheta + p.e2phi * p.dPhi_dphi);
     }
 
 
@@ -637,6 +637,7 @@ public:
             set_photon_values(p, i, 0, 0);
 
             k0_a[i] = k0_f[i] = 1.0 * (1-3*p.Phi);
+            //k0_a[i] = k0_f[i] = p.a * (1-3*p.Phi);
             DA_a[i] = DA_f[i] = final_r * (1+p.Phi);
             dDAdt_a[i] = dDAdt_f[i] = -(1+2*p.Phi);
             nr_a[i] = nr_f[i] = 1.0;
@@ -655,6 +656,7 @@ public:
         z[p.pid] = p.k0 / PW2(p.a) * (1+3*p.Phi) *
             (sqrt(PW2(p.a) * PW2(p.a) * (1-2*p.Phi) * PW2(q) + PW2(p.a) )
              - ni_ui * (1+p.Phi)) ;
+        DA_a[p.pid] /= (1 + p.Phi);
     }
 
     void shoot() {
