@@ -73,10 +73,10 @@ void kappa_deposit(T *particles, double* a, double *origin,
 }
 
 template<typename T>
-void CIC_deposit(T *particles, double *origin, T *delta,
+void NGP_deposit(T *particles, double *origin, T *delta,
                  T *vw, T *counts,
                  idx_t nparticles, double count_density,
-                 double max_r, double min_r, int NR, int NSIDE, int vx_is_weight)
+                 double max_r, double min_r, int NR, int NSIDE)
 {
     // Healpix instance
     T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
@@ -107,67 +107,62 @@ void CIC_deposit(T *particles, double *origin, T *delta,
 
         double vr = (vx * x + vy * y + vz * z) / r;
 
-        if(vx_is_weight > 0)
-         {
-             vr = vx;
-         }
+        int ic = CHI2CHIBIN(r-min_r, dr);
+        int icp = ic+1;
 
-         int ic = CHI2CHIBIN(r-min_r, dr);
-         int icp = ic+1;
+        if(icp >= NR + 2 || ic < -1) continue;
 
-         if(icp >= NR + 2 || ic < -1) continue;
+        double chi_min = r - dr/2.0;
+        double chi_max = r + dr/2.0;
+        double expected_counts = count_density * 4.0/3.0*M_PI*(
+            std::pow(chi_max,3) - std::pow(chi_min,3) ) / ((double)      \
+                                                           NPIX);
 
-         double chi_min = r - dr/2.0;
-         double chi_max = r + dr/2.0;
-         double expected_counts = count_density * 4.0/3.0*M_PI*(
-             std::pow(chi_max,3) - std::pow(chi_min,3) ) / ((double)      \
-                                                            NPIX);
+        double dc = (r-min_r) / dr - (double)ic;
 
-         double dc = (r-min_r) / dr - (double)ic;
+        double tc = 1.0 - dc;
 
-         double tc = 1.0 - dc;
-
-         pointing ptg = pointing(theta, phi);
-         auto pix = fix_arr<int, 4>();
-         auto wgt = fix_arr<double, 4>();
-         HP->get_interpol(ptg, pix, wgt);
-
-         //CIC deposit
-         if( ic >= 0)
-         {
-             for(int i = 0 ; i < 4; i++)
-             {
+        pointing ptg = pointing(theta, phi);
+        // auto pix = fix_arr<int, 4>();
+        // auto wgt = fix_arr<double, 4>();
+        // HP->get_interpol(ptg, pix, wgt);
+        auto pix = HP->ang2pix(ptg);
+        //CIC deposit
+        if( ic >= 0)
+        {
+            //for(int i = 0 ; i < 4; i++)
+            {
 #pragma omp atomic
-                 delta[IDX(ic, pix[i], NPIX)] += 1.0/expected_counts*tc*wgt[i];
+                delta[IDX(ic, pix, NPIX)] += 1.0/expected_counts*tc;
 #pragma omp atomic
-                 delta[IDX(icp, pix[i], NPIX)] += 1.0/expected_counts*dc*wgt[i];
+                delta[IDX(icp, pix, NPIX)] += 1.0/expected_counts*dc;
 
 #pragma omp atomic
-                 counts[IDX(ic, pix[i], NPIX)] += tc*wgt[i];
+                counts[IDX(ic, pix, NPIX)] += tc;
 #pragma omp atomic
-                 counts[IDX(icp, pix[i], NPIX)] += dc*wgt[i];
+                counts[IDX(icp, pix, NPIX)] += dc;
 
 #pragma omp atomic
-                 vw[IDX(ic, pix[i], NPIX)] += vr*tc*wgt[i];
+                vw[IDX(ic, pix, NPIX)] += vr*tc;
 #pragma omp atomic
-                 vw[IDX(icp, pix[i], NPIX)] += vr*dc*wgt[i];
-             }
-         }
-         else
-         {
-             for(int i = 0 ; i < 4; i++)
-             {
+                vw[IDX(icp, pix, NPIX)] += vr*dc;
+            }
+        }
+        else
+        {
+            //for(int i = 0 ; i < 4; i++)
+            {
 #pragma omp atomic
-                 delta[IDX(icp, pix[i], NPIX)] += 1.0/expected_counts*dc*wgt[i];
+                delta[IDX(icp, pix, NPIX)] += 1.0/expected_counts*dc;
 
 #pragma omp atomic
-                 counts[IDX(icp, pix[i], NPIX)] += dc*wgt[i];
+                counts[IDX(icp, pix, NPIX)] += dc;
 
 #pragma omp atomic
-                 vw[IDX(icp, pix[i], NPIX)] += vr*dc*wgt[i];
-             }
-         }
-     }
+                vw[IDX(icp, pix, NPIX)] += vr*dc;
+            }
+        }
+    }
 
 }
 
@@ -275,13 +270,11 @@ void CIC_deposit_with_wgt(
     }
 }
 
-
-// nearest particle deposit
 template<typename T>
-void NP_deposit(T *particles, double *origin, T *delta,
+void CIC_deposit(T *particles, double *origin, T *delta,
                  T *vw, T *counts,
                  idx_t nparticles, double count_density,
-                 double max_r, double min_r, int NR, int NSIDE, int vx_is_weight)
+                 double max_r, double min_r, int NR, int NSIDE)
 {
     // Healpix instance
     T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
@@ -312,10 +305,6 @@ void NP_deposit(T *particles, double *origin, T *delta,
 
         double vr = (vx * x + vy * y + vz * z) / r;
 
-        if(vx_is_weight > 0)
-        {
-            vr = vx;
-        }
 
         int ic = CHI2CHIBIN(r-min_r, dr);
         int icp = ic+1;
@@ -333,29 +322,45 @@ void NP_deposit(T *particles, double *origin, T *delta,
         double tc = 1.0 - dc;
 
         pointing ptg = pointing(theta, phi);
-        //auto pix = fix_arr<int, 4>();
-        //auto wgt = fix_arr<double, 4>();
-        //HP->get_interpol(ptg, pix, wgt);
-        auto pix = HP->ang2pix(ptg);
+        auto pix = fix_arr<int, 4>();
+        auto wgt = fix_arr<double, 4>();
+        HP->get_interpol(ptg, pix, wgt);
 
-        if(dc <= 0.5 && ic >= 0){
+        //CIC deposit
+        if( ic >= 0)
+        {
+            for(int i = 0 ; i < 4; i++)
+            {
 #pragma omp atomic
-            delta[IDX(ic, pix, NPIX)] += 1.0/expected_counts;
+                delta[IDX(ic, pix[i], NPIX)] += 1.0/expected_counts*tc*wgt[i];
 #pragma omp atomic
-            counts[IDX(ic, pix, NPIX)] += 1;
+                delta[IDX(icp, pix[i], NPIX)] += 1.0/expected_counts*dc*wgt[i];
+
 #pragma omp atomic
-            vw[IDX(ic, pix, NPIX)] += vr;
+                counts[IDX(ic, pix[i], NPIX)] += tc*wgt[i];
+#pragma omp atomic
+                counts[IDX(icp, pix[i], NPIX)] += dc*wgt[i];
+
+#pragma omp atomic
+                vw[IDX(ic, pix[i], NPIX)] += vr*tc*wgt[i];
+#pragma omp atomic
+                vw[IDX(icp, pix[i], NPIX)] += vr*dc*wgt[i];
+            }
         }
-        else if(dc > 0.5){
+        else
+        {
+            for(int i = 0 ; i < 4; i++)
+            {
 #pragma omp atomic
-            delta[IDX(icp, pix, NPIX)] += 1.0/expected_counts;
-#pragma omp atomic
-            counts[IDX(icp, pix, NPIX)] += 1;
-#pragma omp atomic
-            vw[IDX(icp, pix, NPIX)] += vr;
+                delta[IDX(icp, pix[i], NPIX)] += 1.0/expected_counts*dc*wgt[i];
 
+#pragma omp atomic
+                counts[IDX(icp, pix[i], NPIX)] += dc*wgt[i];
+
+#pragma omp atomic
+                vw[IDX(icp, pix[i], NPIX)] += vr*dc*wgt[i];
+            }
         }
-
     }
 
 }

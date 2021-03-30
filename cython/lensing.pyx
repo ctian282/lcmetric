@@ -55,6 +55,7 @@ class Lensing:
             self.Phi = self.met.sols['Phi']
             self.Pi = self.met.sols['Pi']
             self.a = self.met.metric_f['a']
+
             self.geo = geo.Geodesic(self.Phi, self.Pi, self.Omega,
                                     self.dPi_dr, self.a, self.NR,
                                     self.init_r, self.final_r, self.NSIDE,
@@ -66,7 +67,17 @@ class Lensing:
             self.N_snap_part = kwargs['N_snap_part']
             self.cosmo_paras = kwargs['cosmo_paras']
         elif(mode is 'born_approx_snap'):
-            self.Phi = self.met.sols['Phi']
+
+            self.use_alm = kwargs.get('use_alm', False)
+
+            if self.use_alm is True:
+                if hasattr(self.met, 'Phi_hier') is False:
+                    raise ValueError('use_alm is True, but Phi_hier is missing!')
+
+                self.Phi = self.met.Phi_hier[0]
+            else:
+                self.Phi = self.met.sols['Phi']
+
             self.lmax = 2*NSIDE - 1
 
             lm = hp.Alm.getlm(self.lmax)
@@ -99,22 +110,29 @@ class Lensing:
         if( r < self.final_r or r > self.init_r):
             raise ValueError('r is too large or too small!')
 
-        Psi = npy.zeros(self.Phi.shape[1])
+        if self.use_alm is True:
+            Psi = npy.zeros(self.Phi.shape[1], dtype=npy.complex)
+        else:
+            Psi = npy.zeros(self.Phi.shape[1])
 
         lr_idx = int(npy.floor( (r - self.final_r) / ( (self.init_r - self.final_r)/ self.NR) ))
 
         for nr in range(lr_idx):
             Psi += self.dr_list[nr] * 0.5 * \
-                (self.lensing_pot_int(r, nr) \
+                (self.lensing_pot_int(r, nr)
                  + self.lensing_pot_int(r, nr+1))
 
         # Last step
         Psi += (r - self.to_tau(lr_idx)) * self.lensing_pot_int(r, lr_idx) \
 
         # Doding laplacian
-        Psi = -0.5 * hp.sphtfunc.alm2map(
-                        (hp.sphtfunc.map2alm(Psi, lmax=self.lmax, iter=30)
-                         * self.lm), nside=self.NSIDE)
+        if self.use_alm is True:
+            Psi = -0.5 * ((Psi * self.lm))
+        else:
+            Psi = -0.5 * (
+                (hp.sphtfunc.map2alm(Psi, lmax=self.lmax, iter=50)
+                 * self.lm))
+
         return Psi
 
 ######################Finishing lensing potential thing##########################

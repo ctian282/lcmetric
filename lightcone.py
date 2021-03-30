@@ -420,6 +420,8 @@ class LightconeFromCone(Lightcone):
         self.init_a = 1 / (1 + self.init_z)
         self.final_a = 1 / (1 + self.final_z)
 
+        self.depo_method = kwargs.get('depo_method', 'NGP')
+
         # Initial comoving distance
         self.init_r = scpy.integrate.quad(self.Hint, 0, init_z)[0]
 
@@ -559,7 +561,7 @@ class LightconeFromCone(Lightcone):
                                        * [0,0,1,0,0,0]
                     lc_CIC.deposit(pdata, self.origin, delta, count_density, \
                                    vw, counts, self.init_r, self.final_r, self.NR,
-                                   self.NSIDE, 0)
+                                   self.NSIDE, self.depo_method)
                     if (lensing_kappa is True):
                         lc_CIC.lensing_kappa_deposit(pdata, self.a_shift,
                                                      self.origin, self.kappa1,
@@ -605,7 +607,7 @@ class LightconeFromCone(Lightcone):
                                    * [0,0,1,0,0,0]
                     lc_CIC.deposit(pdata, self.origin, delta, count_density, \
                                    vw, counts, self.init_r, self.final_r, self.NR,
-                                   self.NSIDE, 0)
+                                   self.NSIDE, self.depo_method)
                     if (lensing_kappa is True):
                         lc_CIC.lensing_kappa_deposit(pdata, self.a_shift,
                                                      self.origin, self.kappa1,
@@ -700,6 +702,8 @@ class LightconeFromSnaps(Lightcone):
                            NSIDE, **kwargs)
 
         self.zel_z = zel_z
+
+        self.depo_method = kwargs.get('depo_method', 'NGP')
 
         if (zel_z is not None):
             self.zel_a = 1 / (1 + zel_z)
@@ -923,7 +927,7 @@ class LightconeFromSnaps(Lightcone):
                                    * [0, 0, 1, 0, 0, 0]
                 lc_CIC.deposit(pdata, self.origin, self.delta, count_density,
                                self.vw, counts, self.init_r, self.final_r,
-                               self.NR, self.NSIDE, 0)
+                               self.NR, self.NSIDE, self.depo_method)
                 if (lensing_kappa is True):
                     lc_CIC.lensing_kappa_deposit(pdata, self.a_shift,
                                                  self.origin, self.kappa1,
