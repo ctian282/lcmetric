@@ -49,6 +49,7 @@ class Lensing:
             except:
                 ang_epsilon = 1e-7
 
+            self.dtype = self.met.sols['Phi'].dtype
             self.Omega, self.Omega_dot, self.Pi_dot, self.dPi_dr \
                 = self.gen_fields_for_rt()
 
@@ -189,8 +190,10 @@ class Lensing:
             self.met.sols['Phi'], -(self.init_r - self.final_r) / self.NR, 0)
         Pi_dot = ut.np_fderv1(
             self.met.sols['Pi'], -(self.init_r - self.final_r) / self.NR, 0)
-        dPi_dr = -2 * Pi_dot - Omega_dot - 3 * self.met.Hubble_hier[0][:,None] * \
+        dPi_dr = npy.ascontiguousarray(
+            -2 * Pi_dot - Omega_dot - 3 * self.met.Hubble_hier[0][:,None] * \
             (Omega + self.met.sols['Pi']) \
             - (2 * self.met.metric_f['Hubble_dt'][:,None] \
-               + self.met.metric_f['Hubble'][:,None]**2) * self.met.sols['Phi']
+               + self.met.metric_f['Hubble'][:,None]**2) * self.met.sols['Phi'],
+            dtype=self.dtype)
         return (Omega, Omega_dot, Pi_dot, dPi_dr)

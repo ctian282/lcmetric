@@ -1,5 +1,5 @@
 cimport cython
 
-ctypedef double complex comp_t
-ctypedef double real_t
+ctypedef float complex comp_t
+ctypedef float real_t
 ctypedef long long idx_t

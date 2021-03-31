@@ -293,10 +293,10 @@ class Metric:
                    - 2.0 * self.Phi_hier[d][step ])/ self.dtau_hier[d]**2
 
             bak = err
-            real_err = npy.abs(hp.alm2map(rhs - lhs, self.nside))
+            real_err = npy.abs(hp.alm2map((rhs - lhs).astype(npy.cdouble), self.nside))
             err = npy.max([real_err.max(), err])
             rel_err += npy.linalg.norm(real_err)**2
-            mag += npy.linalg.norm(hp.alm2map(lhs, self.nside))**2
+            mag += npy.linalg.norm(hp.alm2map(lhs.astype(npy.cdouble), self.nside))**2
             if(err > bak): max_step = step
 
         rel_err = npy.sqrt(rel_err / mag)
@@ -469,21 +469,24 @@ class Metric:
     def to_alm(self, data, array_data = True):
 
         if(array_data == True):
-            return npy.array( [hp.sphtfunc.map2alm(
+            return npy.ascontiguousarray( [hp.sphtfunc.map2alm(
                 data[n], lmax = self.lmax, iter = self.alm_iter) \
-                                   for n in range(len(data))])
+                                           for n in range(len(data))],
+                                          dtype=self.cdtype)
         else:
-            return hp.sphtfunc.map2alm(
-                data, lmax = self.lmax, iter = self.alm_iter)
+            return npy.ascontiguousarray(hp.sphtfunc.map2alm(
+                data, lmax = self.lmax, iter = self.alm_iter),
+                                         dtype=self.cdtype)
 
     def to_real(self, data, array_data = True):
         if(array_data == True):
-            return npy.array( [hp.sphtfunc.alm2map(
-                data[n], nside = self.nside) \
-                               for n in range(len(data))])
+            return npy.ascontiguousarray([hp.sphtfunc.alm2map(
+                data[n].astype(npy.cdouble), nside = self.nside)
+                                          for n in range(len(data))],
+                                         dtype=self.pdtype)
         else:
-            return hp.sphtfunc.alm2map(
-                data, nside = self.nside)
+            return npy.ascontiguousarray(hp.sphtfunc.alm2map(
+                data.astype(npy.cdouble), nside = self.nside), dtype=self.pdtype)
 
 
     def build_hier(self, alm_form = False):
@@ -692,7 +695,8 @@ class Metric:
         elif self.pdtype == npy.double:
             self.cdtype = npy.cdouble
         else:
-            raise ValueError('Data type of Phi is not supported!')
+            raise ValueError('Data type' + str(self.pdtype)
+                             + ' of Phi is not supported!')
 
         print('Set data type as ' + str(self.pdtype), flush=True)
 
@@ -713,7 +717,7 @@ class Metric:
 
         self.sols['Phi'][0] = Phi_f_in.copy()
         #self.sols['Pi'][0] = Pi_f_in.copy()
-        self.sols['Pi'][0] = npy.zeros(Pi_i_in.shape) # Do not need Pi_f
+        self.sols['Pi'][0] = npy.zeros(Pi_i_in.shape, dtype=self.pdtype) # Do not need Pi_f
 
         self.metric_a['a'] = 1 / (1 + z_i_in)
         self.metric_f['a'][-1] = 1 / (1 + z_i_in)
