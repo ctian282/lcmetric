@@ -687,7 +687,7 @@ class Metric:
 
         self.pdtype = Phi_i_in.dtype
 
-        if self.pdtype == npy.float:
+        if self.pdtype == npy.single:
             self.cdtype = npy.csingle
         elif self.pdtype == npy.double:
             self.cdtype = npy.cdouble
