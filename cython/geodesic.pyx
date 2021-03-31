@@ -11,9 +11,10 @@ cimport numpy as npy
 cimport cgeodesic
 from libcpp cimport bool
 
+cimport typedefs
+from typedefs cimport real_t
+from typedefs cimport idx_t
 
-ctypedef long long idx_t
-ctypedef double real_t
 
 cdef class Geodesic:
     cdef _Geodesic[real_t, idx_t] *c_geo

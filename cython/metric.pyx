@@ -1,23 +1,22 @@
 import numpy as npy
 import healpy as hp
 
-import lcmetric.utils as ut
 from libcpp cimport bool
 
 cimport cython
 cimport numpy as npy
 from cython.parallel import prange
 
+cimport typedefs
+from typedefs cimport comp_t
 
-ctypedef double real_t
-ctypedef int idx_t
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef relax_Phi(int npix, double complex[::1] Phi_p1, \
-               double complex [::1] Phi_m1, double complex [::1] Pi, double complex[::1] delta,\
-               double complex[::1] vw, double complex[::1] rhs, \
-               double complex[::1] res, long long[::1] lm, double tau, double a, \
+cdef relax_Phi(int npix, comp_t[::1] Phi_p1, \
+               comp_t [::1] Phi_m1, comp_t [::1] Pi, comp_t[::1] delta,\
+               comp_t[::1] vw, comp_t[::1] rhs, \
+               comp_t[::1] res, long long[::1] lm, double tau, double a, \
                double Hubble, double Hubble_0, \
                double Hubble_dt, double Omega_m, double dtau):
     cdef Py_ssize_t p
@@ -35,10 +34,10 @@ cdef relax_Phi(int npix, double complex[::1] Phi_p1, \
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef dPi_dt(int npix, double complex [::1] Phi, double complex[::1] Phi_p1, \
-            double complex [::1] Phi_m1,
-            double complex [::1] Pi, double complex[::1] vw,\
-            double complex[::1] res, double a, \
+cdef dPi_dt(int npix, comp_t [::1] Phi, comp_t[::1] Phi_p1, \
+            comp_t [::1] Phi_m1,
+            comp_t [::1] Pi, comp_t[::1] vw,\
+            comp_t[::1] res, double a, \
             double Hubble, double Hubble_0, \
             double Hubble_dt, double Omega_m, double dtau):
         cdef Py_ssize_t p
@@ -53,11 +52,11 @@ cdef dPi_dt(int npix, double complex [::1] Phi, double complex[::1] Phi_p1, \
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef dPi_dt_upper_bd(int npix, double complex [::1] Phi,
-            double complex [::1] Phi_m1,
-            double complex [::1] Phi_m2, \
-            double complex [::1] Pi, double complex[::1] vw,\
-            double complex[::1] res, double a, \
+cdef dPi_dt_upper_bd(int npix, comp_t [::1] Phi,
+            comp_t [::1] Phi_m1,
+            comp_t [::1] Phi_m2, \
+            comp_t [::1] Pi, comp_t[::1] vw,\
+            comp_t[::1] res, double a, \
             double Hubble, double Hubble_0, \
             double Hubble_dt, double Omega_m, double dtau):
         cdef Py_ssize_t p
@@ -72,11 +71,11 @@ cdef dPi_dt_upper_bd(int npix, double complex [::1] Phi,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef dPi_dt_lower_bd(int npix, double complex [::1] Phi,
-                     double complex [::1] Phi_p1,
-                     double complex [::1] Phi_p2, \
-                     double complex [::1] Pi, double complex[::1] vw,\
-                     double complex[::1] res, double a, \
+cdef dPi_dt_lower_bd(int npix, comp_t [::1] Phi,
+                     comp_t [::1] Phi_p1,
+                     comp_t [::1] Phi_p2, \
+                     comp_t [::1] Pi, comp_t[::1] vw,\
+                     comp_t[::1] res, double a, \
                      double Hubble, double Hubble_0, \
                      double Hubble_dt, double Omega_m, double dtau):
         cdef Py_ssize_t p
@@ -201,7 +200,7 @@ class Metric:
 
 
     def dPi_dt(self, step, d):
-        cdef npy.ndarray[double complex, ndim=1, mode='c'] dt = npy.zeros(self.Nalms, dtype = complex)
+        cdef npy.ndarray[comp_t, ndim=1, mode='c'] dt = npy.zeros(self.Nalms, dtype = self.cdtype)
         if(step == self.h_size[d] - 1):
             dPi_dt_upper_bd (self.Nalms, \
                        self.Phi_hier[d][step], self.Phi_hier[d][step-1],\
@@ -521,8 +520,8 @@ class Metric:
         self.Hubble_hier[0] = self.metric_f['Hubble']
         self.Hubble_dt_hier[0] = self.metric_f['Hubble_dt']
 
-        self.rhs_hier[0] = npy.zeros(self.Phi_hier[0].shape, dtype = complex)
-        self.rl_hier[0] = npy.zeros(self.Phi_hier[0].shape, dtype = complex)
+        self.rhs_hier[0] = npy.zeros(self.Phi_hier[0].shape, dtype = self.cdtype)
+        self.rl_hier[0] = npy.zeros(self.Phi_hier[0].shape, dtype = self.cdtype)
 
 
         # Allocating space for hiers
@@ -538,19 +537,19 @@ class Metric:
 
             self.h_size[d+1] = n
 
-            self.Phi_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
+            self.Phi_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = self.cdtype)
             self.hier_restrict(self.Phi_hier, d)
 
-            self.Pi_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
+            self.Pi_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = self.cdtype)
 
-            self.delta_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
+            self.delta_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = self.cdtype)
             self.hier_restrict(self.delta_hier, d)
 
-            self.vw_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
+            self.vw_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = self.cdtype)
             self.hier_restrict(self.vw_hier, d)
 
-            self.rhs_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
-            self.rl_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = complex)
+            self.rhs_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = self.cdtype)
+            self.rl_hier[d+1] = npy.zeros((n, hp.Alm.getsize(self.lmax)), dtype = self.cdtype)
 
 
             self.a_hier[d+1] = npy.zeros(n)
@@ -611,7 +610,7 @@ class Metric:
 
         #descritation index ranging from 0 to Ntau
         for field in self.sols:
-            self.sols[field] = npy.zeros((self.Ntau + 1, hp.Alm.getsize(self.lmax)), dtype = complex)
+            self.sols[field] = npy.zeros((self.Ntau + 1, hp.Alm.getsize(self.lmax)), dtype = self.cdtype)
 
 
         self.matter['delta'] = delta[0:self.Ntau+1].copy()
@@ -682,23 +681,31 @@ class Metric:
 
         self.tau_i = r_max_in;
 
-
         self.tau_f = r_min_in
 
         self.Ntau = delta_in.shape[0] - 2
+
+        self.pdtype = Phi_i_in.dtype
+
+        if self.pdtype == npy.float:
+            self.cdtype = npy.csingle
+        elif self.pdtype == npy.double:
+            self.cdtype = npy.cdouble
+        else:
+            raise ValueError('Data type of Phi is not supported!')
+
+        print('Set data type as ' + str(self.pdtype), flush=True)
 
         for field in self.metric_f:
             self.metric_f[field] = npy.zeros(self.Ntau + 1)
 
         #descritation index ranging from 0 to Ntau
         for field in self.sols:
-            self.sols[field] = npy.zeros((self.Ntau + 1, self.Npix))
-
+            self.sols[field] = npy.zeros((self.Ntau + 1, self.Npix), dtype=self.pdtype)
 
         self.matter['delta'] = delta_in[0:self.Ntau+1]
         self.matter['vw'] = vw_in[0:self.Ntau+1]
         # Need to substract extra 2 padding grid
-
 
         self.sols['Phi'][-1] = Phi_i_in.copy()
         self.sols['Pi'][-1] = Pi_i_in.copy()
@@ -725,8 +732,6 @@ class Metric:
 
         self.update_Pi(0)
 
-        if(self.grid == 'DH'):
-            self.grid = 'DH2'
 
     def build_lcmetric(self):
         self.MG()

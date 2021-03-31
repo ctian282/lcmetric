@@ -12,8 +12,10 @@ cimport clcdensity
 from libcpp cimport bool
 from libcpp.vector cimport vector
 
-ctypedef long long idx_t
-ctypedef double real_t
+cimport typedefs
+from typedefs cimport real_t
+from typedefs cimport idx_t
+
 
 cdef class DensFromSnaps:
 
