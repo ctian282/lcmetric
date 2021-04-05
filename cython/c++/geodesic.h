@@ -98,7 +98,7 @@ public:
 
     // if consider shear terms
     bool enable_shear;
-
+    bool use_CIC;
 
     inline IT IDX(int nr, int pix, int NPIX) {
         return (IT)nr*NPIX + (IT)pix;
@@ -117,7 +117,8 @@ public:
     _Geodesic(T *Phi_in, T *Pi_in, T *Omega_in, T *dPi_dr_in,
               double * a_in, int NR_in, double init_r_in, double final_r_in,
               int NSIDE_in, int n_iter_in= 30, double ang_epsilon_in = 1e-6,
-              int n_max_shooting_in = 10, bool enable_shear_in = false):
+              int n_max_shooting_in = 10, bool enable_shear_in = false,
+              bool use_CIC_in = false):
         NR(NR_in),
         NSIDE(NSIDE_in),
         NPIX(12*NSIDE*NSIDE),
@@ -138,7 +139,8 @@ public:
         hp_time_con(0),
         adv_time_con(0),
         tot_time_con(0),
-        enable_shear(enable_shear_in) {
+        enable_shear(enable_shear_in),
+        use_CIC(use_CIC_in) {
 
         for(int i = 0; i < 2; i++)
         {
@@ -200,16 +202,20 @@ public:
     }
 
     // Targets are healpix pixels at distance r
-    void init_with_healpix_tars(double r) {
+    void init_with_healpix_tars(double r, int nside) {
+
+        hp = new T_Healpix_Base<int>
+            ( nside, Healpix_Ordering_Scheme::RING, SET_NSIDE );
+
         max_tar_r = r;
         if(r > init_r)
         {
             std::cout<<"r is too large!"<<std::endl;
             throw(-1);
         }
-        n_p = NPIX;
+        n_p = 12 * nside * nside;
         alloc_par_arrs();
-        for(int i = 0; i < NPIX; i++)
+        for(int i = 0; i < n_p; i++)
         {
             pointing ang = hp->pix2ang(i);
 
@@ -287,21 +293,26 @@ public:
     }
 
     double dk0_dt(Photon &p) {
-        return -4.0 * (p.dPhi_dr + p.ntheta * p.dPhi_dtheta + p.nphi * p.dPhi_dphi)
+        return -4.0 * (p.nr * p.dPhi_dr + p.ntheta * p.dPhi_dtheta + p.nphi * p.dPhi_dphi)
             - 2.0 * (p.Omega + p.dPhi_dr);
     }
 
     double dnr_dt(Photon &p) {
-        return 0.0;
+        return 2.0 * p.nr
+            * ( p.nr * p.dPhi_dr+ p.ntheta * p.dPhi_dtheta + p.nphi * p.dPhi_dphi)
+            - 2.0 * (p.dPhi_dr );
+
     }
 
     double dntheta_dt(Photon &p) {
-        return 2.0 * p.ntheta * ( 1.0 * p.dPhi_dr+ p.ntheta * p.dPhi_dtheta + p.nphi * p.dPhi_dphi)
+        return 2.0 * p.ntheta
+            * ( p.nr * p.dPhi_dr+ p.ntheta * p.dPhi_dtheta + p.nphi * p.dPhi_dphi)
             - 2.0 * (p.dPhi_dtheta / PW2(p.r)  );
     }
 
     double dnphi_dt(Photon &p) {
-        return 2.0 * p.nphi * ( 1.0 * p.dPhi_dr+ p.ntheta * p.dPhi_dtheta + p.nphi * p.dPhi_dphi)
+        return 2.0 * p.nphi *
+            ( p.nr * p.dPhi_dr+ p.ntheta * p.dPhi_dtheta + p.nphi * p.dPhi_dphi)
             - 2.0 * (p.dPhi_dphi / PW2(p.r * sin(p.pt.theta)));
 
     }
@@ -389,6 +400,13 @@ public:
     }
 
 
+    void normal_photon_values(Photon &p) {
+        double norm = PW2(p.nr) + PW2(p.ntheta * p.r)
+            + PW2(p.nphi * p.r * sin(p.theta));
+        p.nr /= sqrt(norm);
+        p.ntheta /= sqrt(norm);
+        p.nphi /= sqrt(norm);
+    }
     /****************************************************/
 
     void set_photon_values(Photon &p, int p_id, int n, int c) {
@@ -406,23 +424,46 @@ public:
         else if(p.theta > M_PI) p.theta = 2*M_PI - p.theta;
         p.pt = pointing(p.theta, p.phi);
 
+        normal_photon_values(p);
 
-        p.Phi = Phi_s[c].interpolated_value(p.pt);
-        p.dPhi_dr = Pi_s[c].interpolated_value(p.pt);
-        p.dPhi_dtheta = Phi_s_dtheta[c].interpolated_value(p.pt);
-        p.dPhi_dphi = Phi_s_dphi[c].interpolated_value(p.pt);
-        p.Omega = Omega_s[c].interpolated_value(p.pt);
+        if(use_CIC == true) {
+            p.Phi = Phi_s[c].interpolated_value(p.pt);
+            p.dPhi_dr = Pi_s[c].interpolated_value(p.pt);
+            p.dPhi_dtheta = Phi_s_dtheta[c].interpolated_value(p.pt);
+            p.dPhi_dphi = Phi_s_dphi[c].interpolated_value(p.pt);
+            p.Omega = Omega_s[c].interpolated_value(p.pt);
 
-        // Ordinary derivatives
-        p.dPhi_ddr = Phi_s_ddr[c].interpolated_value(p.pt);
-        p.dPhi_drdtheta = Phi_s_drdtheta[c].interpolated_value(p.pt);
-        p.dPhi_drdphi = Phi_s_drdphi[c].interpolated_value(p.pt);
-        p.dPhi_ddphi = Phi_s_ddphi[c].interpolated_value(p.pt);
-        p.dPhi_ddtheta = Phi_s_ddtheta[c].interpolated_value(p.pt);
-        p.dPhi_dthetadphi = Phi_s_dthetadphi[c].interpolated_value(p.pt);
+            // Ordinary derivatives
+            p.dPhi_ddr = Phi_s_ddr[c].interpolated_value(p.pt);
+            p.dPhi_drdtheta = Phi_s_drdtheta[c].interpolated_value(p.pt);
+            p.dPhi_drdphi = Phi_s_drdphi[c].interpolated_value(p.pt);
+            p.dPhi_ddphi = Phi_s_ddphi[c].interpolated_value(p.pt);
+            p.dPhi_ddtheta = Phi_s_ddtheta[c].interpolated_value(p.pt);
+            p.dPhi_dthetadphi = Phi_s_dthetadphi[c].interpolated_value(p.pt);
 
-        p.Phi_lap = Phi_s_ang_lap[c].interpolated_value(p.pt) / PW2(p.r)
+            p.Phi_lap = Phi_s_ang_lap[c].interpolated_value(p.pt) / PW2(p.r)
+            + (2 * p.dPhi_dr + p.r * p.dPhi_ddr) / p.r ;
+        }
+        else {
+            int pix = hp->ang2pix(p.pt);
+
+            p.Phi = Phi_s[c][pix];
+            p.dPhi_dr = Pi_s[c][pix];
+            p.dPhi_dtheta = Phi_s_dtheta[c][pix];
+            p.dPhi_dphi = Phi_s_dphi[c][pix];
+            p.Omega = Omega_s[c][pix];
+
+            // Ordinary derivatives
+            p.dPhi_ddr = Phi_s_ddr[c][pix];
+            p.dPhi_drdtheta = Phi_s_drdtheta[c][pix];
+            p.dPhi_drdphi = Phi_s_drdphi[c][pix];
+            p.dPhi_ddphi = Phi_s_ddphi[c][pix];
+            p.dPhi_ddtheta = Phi_s_ddtheta[c][pix];
+            p.dPhi_dthetadphi = Phi_s_dthetadphi[c][pix];
+
+            p.Phi_lap = Phi_s_ang_lap[c][pix] / PW2(p.r)
                 + (2 * p.dPhi_dr + p.r * p.dPhi_ddr) / p.r ;
+        }
         // Adding connection terms to from covariant derivatives
         p.dPhi_ddr += 0;
         p.dPhi_drdtheta -= p.dPhi_dtheta / p.r;
@@ -447,40 +488,83 @@ public:
         p.a = (1.0 - weight_l) * a[n] + weight_l * a[n+1];
 
         p.pt = pointing(p.theta, p.phi);
-        p.Phi = (1.0 - weight_l) * Phi_s[c].interpolated_value(p.pt)
+
+        normal_photon_values(p);
+
+        if(use_CIC == true) {
+            p.Phi = (1.0 - weight_l) * Phi_s[c].interpolated_value(p.pt)
                 + weight_l * Phi_s[1-c].interpolated_value(p.pt);
 
-        p.dPhi_dr = (1.0 - weight_l) * Pi_s[c].interpolated_value(p.pt)
-            + weight_l * Pi_s[1-c].interpolated_value(p.pt);
+            p.dPhi_dr = (1.0 - weight_l) * Pi_s[c].interpolated_value(p.pt)
+                + weight_l * Pi_s[1-c].interpolated_value(p.pt);
 
-        p.dPhi_dtheta = (1.0 - weight_l) * Phi_s_dtheta[c].interpolated_value(p.pt)
-            + weight_l * Phi_s_dtheta[1-c].interpolated_value(p.pt);
+            p.dPhi_dtheta = (1.0 - weight_l) * Phi_s_dtheta[c].interpolated_value(p.pt)
+                + weight_l * Phi_s_dtheta[1-c].interpolated_value(p.pt);
 
-        p.dPhi_dphi = (1.0 - weight_l) * Phi_s_dphi[c].interpolated_value(p.pt)
-            + weight_l * Phi_s_dphi[1-c].interpolated_value(p.pt);
+            p.dPhi_dphi = (1.0 - weight_l) * Phi_s_dphi[c].interpolated_value(p.pt)
+                + weight_l * Phi_s_dphi[1-c].interpolated_value(p.pt);
 
-        p.Omega = (1.0 - weight_l) * Omega_s[c].interpolated_value(p.pt)
-            + weight_l * Omega_s[1-c].interpolated_value(p.pt);
+            p.Omega = (1.0 - weight_l) * Omega_s[c].interpolated_value(p.pt)
+                + weight_l * Omega_s[1-c].interpolated_value(p.pt);
 
-        // Ordinary derivatives
-        p.dPhi_ddr = (1.0 - weight_l) * Phi_s_ddr[c].interpolated_value(p.pt)
-            + weight_l * Phi_s_ddr[1-c].interpolated_value(p.pt);
+            // Ordinary derivatives
+            p.dPhi_ddr = (1.0 - weight_l) * Phi_s_ddr[c].interpolated_value(p.pt)
+                + weight_l * Phi_s_ddr[1-c].interpolated_value(p.pt);
 
-        p.dPhi_drdtheta = (1.0 - weight_l) * Phi_s_drdtheta[c].interpolated_value(p.pt)
-            + weight_l * Phi_s_drdtheta[1-c].interpolated_value(p.pt);
-        p.dPhi_drdphi = (1.0 - weight_l) * Phi_s_drdphi[c].interpolated_value(p.pt)
-            + weight_l * Phi_s_drdphi[1-c].interpolated_value(p.pt);
-        p.dPhi_ddphi = (1.0 - weight_l) * Phi_s_ddphi[c].interpolated_value(p.pt)
-            + weight_l * Phi_s_ddphi[1-c].interpolated_value(p.pt);
-        p.dPhi_ddtheta = (1.0 - weight_l) * Phi_s_ddtheta[c].interpolated_value(p.pt)
-            + weight_l * Phi_s_ddtheta[1-c].interpolated_value(p.pt);
-        p.dPhi_dthetadphi = (1.0 - weight_l) * Phi_s_dthetadphi[c].interpolated_value(p.pt)
-            + weight_l * Phi_s_dthetadphi[1-c].interpolated_value(p.pt);
+            p.dPhi_drdtheta = (1.0 - weight_l) * Phi_s_drdtheta[c].interpolated_value(p.pt)
+                + weight_l * Phi_s_drdtheta[1-c].interpolated_value(p.pt);
+            p.dPhi_drdphi = (1.0 - weight_l) * Phi_s_drdphi[c].interpolated_value(p.pt)
+                + weight_l * Phi_s_drdphi[1-c].interpolated_value(p.pt);
+            p.dPhi_ddphi = (1.0 - weight_l) * Phi_s_ddphi[c].interpolated_value(p.pt)
+                + weight_l * Phi_s_ddphi[1-c].interpolated_value(p.pt);
+            p.dPhi_ddtheta = (1.0 - weight_l) * Phi_s_ddtheta[c].interpolated_value(p.pt)
+                + weight_l * Phi_s_ddtheta[1-c].interpolated_value(p.pt);
+            p.dPhi_dthetadphi = (1.0 - weight_l) * Phi_s_dthetadphi[c].interpolated_value(p.pt)
+                + weight_l * Phi_s_dthetadphi[1-c].interpolated_value(p.pt);
 
-        p.Phi_lap = ((1.0-weight_l) * Phi_s_ang_lap[c].interpolated_value(p.pt)
-                     + weight_l * Phi_s_ang_lap[1-c].interpolated_value(p.pt))
-            / PW2(p.r)
-            + (2 * p.dPhi_dr + p.r * p.dPhi_ddr) / p.r ;
+            p.Phi_lap = ((1.0-weight_l) * Phi_s_ang_lap[c].interpolated_value(p.pt)
+                         + weight_l * Phi_s_ang_lap[1-c].interpolated_value(p.pt))
+                / PW2(p.r)
+                + (2 * p.dPhi_dr + p.r * p.dPhi_ddr) / p.r ;
+        }
+        else {
+            int pix = hp->ang2pix(p.pt);
+
+            p.Phi = (1.0 - weight_l) * Phi_s[c][pix]
+                + weight_l * Phi_s[1-c][pix];
+
+            p.dPhi_dr = (1.0 - weight_l) * Pi_s[c][pix]
+                + weight_l * Pi_s[1-c][pix];
+
+            p.dPhi_dtheta = (1.0 - weight_l) * Phi_s_dtheta[c][pix]
+                + weight_l * Phi_s_dtheta[1-c][pix];
+
+            p.dPhi_dphi = (1.0 - weight_l) * Phi_s_dphi[c][pix]
+                + weight_l * Phi_s_dphi[1-c][pix];
+
+            p.Omega = (1.0 - weight_l) * Omega_s[c][pix]
+                + weight_l * Omega_s[1-c][pix];
+
+            // Ordinary derivatives
+            p.dPhi_ddr = (1.0 - weight_l) * Phi_s_ddr[c][pix]
+                + weight_l * Phi_s_ddr[1-c][pix];
+
+            p.dPhi_drdtheta = (1.0 - weight_l) * Phi_s_drdtheta[c][pix]
+                + weight_l * Phi_s_drdtheta[1-c][pix];
+            p.dPhi_drdphi = (1.0 - weight_l) * Phi_s_drdphi[c][pix]
+                + weight_l * Phi_s_drdphi[1-c][pix];
+            p.dPhi_ddphi = (1.0 - weight_l) * Phi_s_ddphi[c][pix]
+                + weight_l * Phi_s_ddphi[1-c][pix];
+            p.dPhi_ddtheta = (1.0 - weight_l) * Phi_s_ddtheta[c][pix]
+                + weight_l * Phi_s_ddtheta[1-c][pix];
+            p.dPhi_dthetadphi = (1.0 - weight_l) * Phi_s_dthetadphi[c][pix]
+                + weight_l * Phi_s_dthetadphi[1-c][pix];
+
+            p.Phi_lap = ((1.0-weight_l) * Phi_s_ang_lap[c][pix]
+                         + weight_l * Phi_s_ang_lap[1-c][pix])
+                / PW2(p.r)
+                + (2 * p.dPhi_dr + p.r * p.dPhi_ddr) / p.r ;
+        }
 
         // Adding connection terms to from covariant derivatives
         p.dPhi_ddr += 0;

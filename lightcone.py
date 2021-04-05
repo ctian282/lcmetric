@@ -646,6 +646,7 @@ class LightconeFromSnaps(Lightcone):
                  NR_is_N_snap=False,
                  lensing_kappa=False,
                  need_reduce=False,
+                 reduce_ratio=4,
                  chunk=2**62,
                  **kwargs):
         """Initializing lightcone object from particle cone data.
@@ -718,7 +719,7 @@ class LightconeFromSnaps(Lightcone):
                 os.path.commonprefix(t[i:i + n_threads]) + '[0-9]*')
 
         if (need_reduce is True):
-            self.names = self.names[1::4]
+            self.names = self.names[1::reduce_ratio]
 
         self.n_snaps = len(self.names)
 

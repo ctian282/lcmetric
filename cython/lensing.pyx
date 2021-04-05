@@ -44,10 +44,8 @@ class Lensing:
         self.mode = mode
 
         if(mode is 'ray_tracing'):
-            try:
-                ang_epsilon = kwargs['ang_epsilon']
-            except:
-                ang_epsilon = 1e-7
+            ang_epsilon = kwargs.get('ang_epsilon', 1e-7)
+            max_trials = kwargs.get('max_trials', 10)
 
             self.dtype = self.met.sols['Phi'].dtype
             self.Omega, self.Omega_dot, self.Pi_dot, self.dPi_dr \
@@ -56,11 +54,12 @@ class Lensing:
             self.Phi = self.met.sols['Phi']
             self.Pi = self.met.sols['Pi']
             self.a = self.met.metric_f['a']
-
+            print(self.Omega.dtype)
+            print(self.dPi_dr.dtype)
             self.geo = geo.Geodesic(self.Phi, self.Pi, self.Omega,
                                     self.dPi_dr, self.a, self.NR,
                                     self.init_r, self.final_r, self.NSIDE,
-                                    ang_epsilon=ang_epsilon)
+                                    ang_epsilon=ang_epsilon, max_shooting_trials=max_trials)
         elif(mode is 'born_approx_lc'):
             self.kappa1 = kwargs['kappa1']
             self.kappa2 = kwargs['kappa2']
@@ -143,11 +142,12 @@ class Lensing:
         if(kwargs['init_with_hp_tars'] is True):
             self.r = kwargs['r']
 
+            nside = kwargs.get('nside', self.NSIDE)
             if (self.r < self.final_r or self.r > self.init_r):
                 raise ValueError('r is too large or too small!')
 
             if (self.mode is 'ray_tracing'):
-                self.geo.init_with_healpix_tars(self.r)
+                self.geo.init_with_healpix_tars(self.r, nside)
             elif (self.mode is 'born_approx_snap'):
                 pass
         elif(kwargs['init_with_input_tars'] is True):

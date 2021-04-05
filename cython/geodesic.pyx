@@ -32,7 +32,7 @@ cdef class Geodesic:
                   real_t [:,::1] Omega, real_t [:,::1] dPi_dr, double [::1] a,\
                   int NR, double init_r, double final_r, int NSIDE, \
                   int n_iter = 30, double ang_epsilon = 1e-2, ray_tracing=True,
-                  int max_shooting_trials = 10, bool enable_shear=False):
+                  int max_shooting_trials = 10, bool enable_shear=False, bool use_CIC=False):
 
         self.ray_tracing = ray_tracing
 
@@ -42,7 +42,7 @@ cdef class Geodesic:
                                               &Omega[0, 0], &dPi_dr[0, 0], &a[0],
                                               NR, init_r, final_r, NSIDE, n_iter,
                                               ang_epsilon, max_shooting_trials,
-                                              enable_shear)
+                                              enable_shear, use_CIC)
         else:
             raise ValueError('Now geodesic class ONLY does ray-tracing!')
 
@@ -50,9 +50,9 @@ cdef class Geodesic:
         if(self.ray_tracing is True):
             del self.c_geo
 
-    def init_with_healpix_tars(self, double r):
+    def init_with_healpix_tars(self, double r, int nside):
         if (self.ray_tracing is True):
-            self.c_geo.init_with_healpix_tars(r)
+            self.c_geo.init_with_healpix_tars(r, nside)
         else:
             print("Doing nothing since in ray-tracing-mode!")
             pass
@@ -103,5 +103,11 @@ cdef class Geodesic:
     def shooting_states(self):
         cdef int n_p = self.c_geo.n_p;
         npy_arr = npy.asarray(<int[:n_p]>self.c_geo.tars_lower_bins)
+
+        return npy_arr.copy();
+
+    def diff_s_ang(self):
+        cdef int n_p = self.c_geo.n_p;
+        npy_arr = npy.asarray(<double[:n_p]>self.c_geo.diff_s_ang)
 
         return npy_arr.copy();
