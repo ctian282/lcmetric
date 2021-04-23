@@ -714,9 +714,13 @@ class LightconeFromSnaps(Lightcone):
         self.names = list()
         files = list()
         import os
-        for i in range(0, len(t), n_threads):
-            self.names.append(
-                os.path.commonprefix(t[i:i + n_threads]) + '[0-9]*')
+        if (n_threads == 1):
+            for i in range(0, len(t), n_threads):
+                self.names.append(os.path.commonprefix(t[i:i + 1]) + '*')
+        else:
+            for i in range(0, len(t), n_threads):
+                self.names.append(
+                    os.path.commonprefix(t[i:i + n_threads]) + '[0-9]*')
 
         if (need_reduce is True):
             self.names = self.names[1::reduce_ratio]
@@ -772,7 +776,7 @@ class LightconeFromSnaps(Lightcone):
                 self.inverse_Hint, args=(self.to_r(n, self.NR))).x) \
                               for n in range(self.NR+1)])
             self.Phi = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
-
+            self.Pi = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
             for fi in range(init_snap_i, final_snap_i - 1, -1):
 
                 ni = self.NR - (init_snap_i - fi)
@@ -799,8 +803,18 @@ class LightconeFromSnaps(Lightcone):
                     r * npy.sin(self.theta_list[i]) * npy.sin(self.phi_list[i]) + origin[1],\
                     r * npy.cos(self.theta_list[i]) + origin[2]]  \
                                             for i in range(self.NPIX)], dtype=self.pdtype))
+                self.Pi[ni] = utC.f_r_derv(
+                    snap, npy.array(rf.BoxSize / rf.Nmesh), r,
+                    npy.ascontiguousarray(
+                        [ [
+                            r * npy.sin(self.theta_list[i]) * npy.cos(self.phi_list[i]) + origin[0],\
+                            r * npy.sin(self.theta_list[i]) * npy.sin(self.phi_list[i]) + origin[1],\
+                            r * npy.cos(self.theta_list[i]) + origin[2]]  \
+                          for i in range(self.NPIX)], dtype=self.pdtype))
+
                 #del files[fi]
             self.met.sols['Phi'] = self.Phi
+            self.met.sols['Pi'] = self.Pi
             return
 
         # shifted (-1) version of the scale factor,

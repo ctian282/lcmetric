@@ -22,7 +22,8 @@ cdef relax_Phi(int npix, comp_t[::1] Phi_p1, \
     cdef Py_ssize_t p
     for p in prange(npix, nogil=True):
     #for p in range(npix):
-        res[p] = ( ( ((-2 / tau + 2 * Hubble) * Pi[p] \
+        res[p] = ( ( ((-2 / tau + 2 * Hubble) \
+                      * (Pi[p] +  (Phi_p1[p] - Phi_m1[p]) / (2 * dtau) )\
                      + 1.5 * Hubble_0**2 * Omega_m / a * delta[p]\
                      + 3 * Hubble_0**2 * Omega_m / a * vw[p]\
                     ) + rhs[p])\
@@ -43,12 +44,17 @@ cdef dPi_dt(int npix, comp_t [::1] Phi, comp_t[::1] Phi_p1, \
         cdef Py_ssize_t p
         for p in prange(npix, nogil=True):
         #for p in range(npix):
-            res[p] = -( (Phi_p1[p] + Phi_m1[p] - 2 * Phi[p]) / dtau**2 \
-                       ) - 3 * Hubble * \
-                       ( - (Phi_p1[p] - Phi_m1[p]) / (2*dtau) \
-                        ) - 2 * Hubble * Pi[p] \
-                        - (2 * Hubble_dt + Hubble**2) * Phi[p] \
-                        + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
+            # res[p] = -( (Phi_p1[p] + Phi_m1[p] - 2 * Phi[p]) / dtau**2 \
+            #            ) - 3 * Hubble * \
+            #            ( - (Phi_p1[p] - Phi_m1[p]) / (2*dtau) \
+            #             ) - 2 * Hubble * Pi[p] \
+            #             - (2 * Hubble_dt + Hubble**2) * Phi[p] \
+            #             + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
+            res[p] =  - 2 * Hubble * Pi[p] \
+                - Hubble *  ( - (Phi_p1[p] - Phi_m1[p]) / (2*dtau))\
+                - (2 * Hubble_dt + Hubble**2) * Phi[p] \
+                + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -56,18 +62,21 @@ cdef dPi_dt_upper_bd(int npix, comp_t [::1] Phi,
             comp_t [::1] Phi_m1,
             comp_t [::1] Phi_m2, \
             comp_t [::1] Pi, comp_t[::1] vw,\
-            comp_t[::1] res, double a, \
+            comp_t[::1] res, comp_t [::1] Pi_i, double a,
             double Hubble, double Hubble_0, \
             double Hubble_dt, double Omega_m, double dtau):
         cdef Py_ssize_t p
         for p in prange(npix, nogil=True):
         #for p in range(npix):
-            res[p] = -( (Phi[p] + Phi_m2[p] - 2 * Phi_m1[p]) / dtau**2 \
-                       ) - 3 * Hubble * \
-                       ( - (Phi[p] - Phi_m1[p]) / (dtau) \
-                        ) - 2 * Hubble * Pi[p] \
-                        - (2 * Hubble_dt + Hubble**2) * Phi[p] \
-                        + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
+            # res[p] = - 3 * Hubble * Pi[p]\
+            #     + Hubble * Pi_i[p] \
+            #     - (2 * Hubble_dt + Hubble**2) * Phi[p] \
+            #     + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
+            res[p] = - 2 * Hubble * Pi[p]\
+                - Hubble * ( (Phi_m2[p] - Phi_m1[p])/ dtau) \
+                - (2 * Hubble_dt + Hubble**2) * Phi[p] \
+                + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -81,12 +90,10 @@ cdef dPi_dt_lower_bd(int npix, comp_t [::1] Phi,
         cdef Py_ssize_t p
         for p in prange(npix, nogil=True):
         #for p in range(npix):
-            res[p] = -( (Phi[p] + Phi_p2[p] - 2 * Phi_p1[p]) / dtau**2 \
-                       ) - 3 * Hubble * \
-                       (  (Phi[p] - Phi_p1[p]) / (dtau) \
-                        ) - 2 * Hubble * Pi[p] \
-                        - (2 * Hubble_dt + Hubble**2) * Phi[p] \
-                        + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
+            res[p] =  - 2 * Hubble * Pi[p] \
+                - Hubble *  (  (Phi[p] - Phi_p1[p]) / (dtau))\
+                - (2 * Hubble_dt + Hubble**2) * Phi[p] \
+                + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
 
 
 class Metric:
@@ -182,7 +189,8 @@ class Metric:
         return self.metric_a['a'] * self.Hubble_a
 
     def dPhi_dt(self, ntau, d):
-        return (-2 / self.tau_hier[d][ntau] + 2*self.Hubble_hier[d][ntau]) * self.Pi_hier[d][ntau] \
+        return (-2 / self.tau_hier[d][ntau] + 2 * self.Hubble_hier[d][ntau]) \
+            * (self.Pi_hier[d][ntau] + (self.Phi_hier[d][ntau + 1] - self.Phi_hier[d][ntau - 1]) / (2 * self.dtau_hier[d])) \
             - (2 * self.Hubble_dt_hier[d][ntau] -2 * self.Hubble_hier[d][ntau]**2
                - 3 * 1.5 * self.Hubble_0**2 *self.Omega_m / self.a_hier[d][ntau]) \
             * self.Phi_hier[d][ntau] \
@@ -205,7 +213,7 @@ class Metric:
             dPi_dt_upper_bd (self.Nalms, \
                        self.Phi_hier[d][step], self.Phi_hier[d][step-1],\
                        self.Phi_hier[d][step-2], self.Pi_hier[d][step], \
-                       self.vw_hier[d][step], \
+                       self.vw_hier[d][step], self.Pi_i, \
                        dt,
                        self.a_hier[d][step], \
                        self.Hubble_hier[d][step], \
@@ -213,6 +221,7 @@ class Metric:
                        self.dtau_hier[d]
                        )
         elif(step == 0):
+
             dPi_dt_lower_bd (self.Nalms, \
                              self.Phi_hier[d][step], self.Phi_hier[d][step+1],\
                              self.Phi_hier[d][step+2], self.Pi_hier[d][step], \
@@ -286,8 +295,10 @@ class Metric:
         rel_err = 0
         mag = 0
         max_step = -1
+
         for step in reversed(range(1, self.h_size[d]-1)):
             #self.est_angle_lap(step, d)
+
             rhs = self.dPhi_dt(step, d) + self.rhs_hier[d][step]
             lhs = (self.Phi_hier[d][step + 1] + self.Phi_hier[d][step - 1] \
                    - 2.0 * self.Phi_hier[d][step ])/ self.dtau_hier[d]**2
@@ -339,6 +350,7 @@ class Metric:
             self.rl_hier[d][step] = (self.Phi_hier[d][step + 1] + self.Phi_hier[d][step - 1] \
                  - 2.0 * self.Phi_hier[d][step ])/ (self.dtau_hier[d])**2                    \
                  - self.dPhi_dt(step, d)
+
 
 
     def update_Pi(self, d):
@@ -719,6 +731,7 @@ class Metric:
         #self.sols['Pi'][0] = Pi_f_in.copy()
         self.sols['Pi'][0] = npy.zeros(Pi_i_in.shape, dtype=self.pdtype) # Do not need Pi_f
 
+
         self.metric_a['a'] = 1 / (1 + z_i_in)
         self.metric_f['a'][-1] = 1 / (1 + z_i_in)
 
@@ -730,6 +743,14 @@ class Metric:
             print("Warning! the total energy fraction is deviating from 1!!!", flush=True)
 
         self.init()
+
+
+        Omega_i = self.metric_f['Hubble'][self.Ntau] * \
+            Phi_i_in * (((Params['Omega_m'] * (1 + z_i_in)**3 ) \
+            / (Params['Omega_m'] * (1 + z_i_in)**3 + Params['Omega_L']))**0.55 - 1)
+
+        self.Pi_i = self.to_alm(self.sols['Pi'][-1], array_data=False)
+        self.sols['Pi'][-1] =  Omega_i
 
 
         self.build_hier()
@@ -750,5 +771,5 @@ class Metric:
         #del self.Phi_hier
         #del self.Pi_hier
 
-        del self.delta_hier
-        del self.vw_hier
+        #del self.delta_hier
+        #del self.vw_hier
