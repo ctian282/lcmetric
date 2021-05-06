@@ -745,6 +745,10 @@ class Metric:
         self.init()
 
 
+        # Omega_i = npy.ascontiguousarray(npy.load(
+        #     "/media/chris/3b7ae93c-9459-4858-9b27-3209d1805b9a/draft_data/Metric_recon/con_test_256_phi/Omega_nl.npy")
+        #                                 , dtype=self.pdtype)
+
         Omega_i = self.metric_f['Hubble'][self.Ntau] * \
             Phi_i_in * (((Params['Omega_m'] * (1 + z_i_in)**3 ) \
             / (Params['Omega_m'] * (1 + z_i_in)**3 + Params['Omega_L']))**0.55 - 1)
