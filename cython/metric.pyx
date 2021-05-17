@@ -1,3 +1,4 @@
+
 import numpy as npy
 import healpy as hp
 
@@ -73,7 +74,7 @@ cdef dPi_dt_upper_bd(int npix, comp_t [::1] Phi,
             #     - (2 * Hubble_dt + Hubble**2) * Phi[p] \
             #     + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
             res[p] = - 2 * Hubble * Pi[p]\
-                - Hubble * ( (Phi_m2[p] - Phi_m1[p])/ dtau) \
+                - Hubble * ( (Phi_m1[p] - Phi[p])/ dtau) \
                 - (2 * Hubble_dt + Hubble**2) * Phi[p] \
                 + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
 
@@ -213,8 +214,8 @@ class Metric:
             dPi_dt_upper_bd (self.Nalms, \
                        self.Phi_hier[d][step], self.Phi_hier[d][step-1],\
                        self.Phi_hier[d][step-2], self.Pi_hier[d][step], \
-                       self.vw_hier[d][step], self.Pi_i, \
-                       dt,
+                       self.vw_hier[d][step], \
+                       dt, self.Pi_i, \
                        self.a_hier[d][step], \
                        self.Hubble_hier[d][step], \
                        self.Hubble_0, self.Hubble_dt_hier[d][step], self.Omega_m, \
@@ -744,9 +745,8 @@ class Metric:
 
         self.init()
 
-
         # Omega_i = npy.ascontiguousarray(npy.load(
-        #     "/media/chris/3b7ae93c-9459-4858-9b27-3209d1805b9a/draft_data/Metric_recon/con_test_256_phi/Omega_nl.npy")
+        #     "/media/chris/3b7ae93c-9459-4858-9b27-3209d1805b9a/draft_data/Metric_recon/con_test_256_phi/Omega_nl_vel.npy")
         #                                 , dtype=self.pdtype)
 
         Omega_i = self.metric_f['Hubble'][self.Ntau] * \
