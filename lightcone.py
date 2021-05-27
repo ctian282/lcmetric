@@ -942,6 +942,18 @@ class LightconeFromSnaps(Lightcone):
                                             dtype=self.pdtype)
                 IDs = npy.ascontiguousarray(i)
 
+                if (self.zel_z is not None):
+                    pos += \
+                        utC.interp(rf_i0, self.dx,
+                                   npy.ascontiguousarray(pos[:, 0:3]))[:, None] \
+                                   * [1, 0, 0] +\
+                        utC.interp(rf_i1, self.dx,
+                                   npy.ascontiguousarray(pos[:, 0:3]))[:, None] \
+                                   * [0, 1, 0] +\
+                        utC.interp(rf_i2, self.dx,
+                                   npy.ascontiguousarray(pos[:, 0:3]))[:, None] \
+                                   * [0, 0, 1]
+
                 state = self.snap_den.proc_snap_chunk(pos, vel, IDs,
                                                       tau - self.lc_shift,
                                                       dtau)
@@ -960,18 +972,6 @@ class LightconeFromSnaps(Lightcone):
                 if (p_num == 0):
                     continue
                 pdata = npy.array(self.snap_den.get_pdata()).reshape(p_num, 6)
-
-                if (self.zel_z is not None):
-                    pdata += \
-                        utC.interp(rf_i0, self.dx,
-                                   npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
-                                   * [1, 0, 0, 0, 0, 0] +\
-                        utC.interp(rf_i1, self.dx,
-                                   npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
-                                   * [0, 1, 0, 0, 0, 0] +\
-                        utC.interp(rf_i2, self.dx,
-                                   npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
-                                   * [0, 0, 1, 0, 0, 0]
 
                 lc_CIC.deposit(pdata, self.origin, self.delta, count_density,
                                self.vw, counts, self.init_r, self.final_r,
