@@ -27,7 +27,7 @@ def flap(ta, dx):
 
 cpdef interp(real_t[:,:,::1] ta, double [::1] dx, real_t[:,::1] x_list):
 
-    cdef int ns = x_list.shape[0]
+    cdef long long ns = x_list.shape[0]
 
     if real_t is float:
         dtype = npy.float32
