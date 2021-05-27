@@ -118,6 +118,42 @@ def inverse_derv(field, L, N, dir):
     return npy.real(npy.fft.ifftn(field_fft))
 
 
+def inverse_derv_scalar(field, L, N):
+
+    ks = 2.0 * npy.pi * npy.fft.fftfreq(N, L / N)
+    ks[0] = 1
+
+    field_fft0 = npy.fft.fftn(field[:, :, :, 0])
+    field_fft1 = npy.fft.fftn(field[:, :, :, 1])
+    field_fft2 = npy.fft.fftn(field[:, :, :, 2])
+
+    ans = field_fft0 / (1.0j * ks[:, None, None]) \
+        + field_fft1 / (1.0j * ks[None, :, None]) \
+        + field_fft2 / (1.0j * ks[None, None, :])
+
+    ans[0, 0, 0] = 0
+
+    return npy.real(npy.fft.ifftn(ans))
+
+
+def derv_scalar(field, L, N):
+
+    ks = 2.0 * npy.pi * npy.fft.fftfreq(N, L / N)
+    ks[0] = 1
+
+    field_fft0 = npy.fft.fftn(field[:, :, :, 0])
+    field_fft1 = npy.fft.fftn(field[:, :, :, 1])
+    field_fft2 = npy.fft.fftn(field[:, :, :, 2])
+
+    ans = field_fft0 * (1.0j * ks[:, None, None]) \
+        + field_fft1 * (1.0j * ks[None, :, None]) \
+        + field_fft2 * (1.0j * ks[None, None, :])
+
+    ans[0, 0, 0] = 0
+
+    return npy.real(npy.fft.ifftn(ans))
+
+
 def inverse_Lap(field, L, N):
     k2s = fftFreqs(L, N)**2
     k2s[0, 0, 0] = 1

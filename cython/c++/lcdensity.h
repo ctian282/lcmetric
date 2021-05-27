@@ -95,9 +95,26 @@ public:
                         double vy = id2vel[3 * ids[i] + 1];
                         double vz = id2vel[3 * ids[i] + 2];
 
+                        // double vx = (next_x - x ) / dtau;
+                        // double vy = (next_y - y ) / dtau;
+                        // double vz = (next_z - z ) / dtau;
+
+                        double next_vx = vel[3 * i + 0] ;
+                        double next_vy = vel[3 * i + 1] ;
+                        double next_vz = vel[3 * i + 2] ;
+
+                        double ax = (next_vx - vx) / dtau;
+                        double ay = (next_vy - vy) / dtau;
+                        double az = (next_vz - vz) / dtau;
+
+                        // double alpha = + 0.5 *
+                        //     (PW2(x * vx + y * vy + z * vz) / PW3(r) -
+                        //      (vx * vx + vy * vy + vz * vz) / r );
+
                         double alpha = + 0.5 *
                             (PW2(x * vx + y * vy + z * vz) / PW3(r) -
-                             (vx * vx + vy * vy + vz * vz) / r );
+                             (vx * vx + vy * vy + vz * vz) / r -
+                             (ax * x + ay * y + az * z) / r) ;
 
                         double beta = -1.0 - (x * vx + y * vy + z * vz) / r;
                         double gamma = -(tau) - r;
@@ -115,6 +132,7 @@ public:
                         }
 
                         if(dt < 0 || dt > dtau) continue;
+
 
                         T lc_x = x + vx * dt;
                         T lc_y = y + vy * dt;

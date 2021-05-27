@@ -19,7 +19,7 @@ inline idx_t IDX(int nr, int pix, int NPIX)
 template<typename T>
 void kappa_deposit(T *particles, double* a, double *origin,
                    T *kappa1, T *kappa2, idx_t nparticles,
-                   double max_r, double min_r, int NR, int NSIDE)
+                   double max_r, double min_r, int NR, int NSIDE, double shift)
 {
     T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
         ( NSIDE, Healpix_Ordering_Scheme::RING, SET_NSIDE );
@@ -34,7 +34,7 @@ void kappa_deposit(T *particles, double* a, double *origin,
         double y = particles[p*6 + 1] - origin[1];
         double z = particles[p*6 + 2] - origin[2];
 
-        double r = std::sqrt(x*x + y*y + z*z);
+        double r = std::sqrt(x*x + y*y + z*z) + shift;
         // get chi, theta, phi
         double theta = std::acos(z/r);
         if(theta < -0.1) throw(-1);
@@ -76,7 +76,7 @@ template<typename T>
 void NGP_deposit(T *particles, double *origin, T *delta,
                  T *vw, T *counts,
                  idx_t nparticles, double count_density,
-                 double max_r, double min_r, int NR, int NSIDE)
+                 double max_r, double min_r, int NR, int NSIDE, double shift)
 {
     // Healpix instance
     T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
@@ -96,7 +96,7 @@ void NGP_deposit(T *particles, double *origin, T *delta,
         double vy = particles[p*6 + 4];
         double vz = particles[p*6 + 5];
 
-        double r = std::sqrt(x*x + y*y + z*z);
+        double r = std::sqrt(x*x + y*y + z*z) + shift;
         // get chi, theta, phi
         double theta = std::acos(z/r);
         if(theta < -0.1) throw(-1);
@@ -170,7 +170,7 @@ template<typename T>
 void CIC_deposit_with_wgt(
     T *particles, double *origin, T *delta, T *vw, T *counts,
     idx_t nparticles, double count_density,
-    double max_r, double min_r, int NR, int NSIDE, T *weight)
+    double max_r, double min_r, int NR, int NSIDE, T *weight, double shift)
 {
     // Healpix instance
     T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
@@ -192,7 +192,7 @@ void CIC_deposit_with_wgt(
 
         double val = particles[p*7 + 6];
 
-        double r = std::sqrt(x*x + y*y + z*z);
+        double r = std::sqrt(x*x + y*y + z*z) + shift;
         // get chi, theta, phi
         double theta = std::acos(z/r);
         if(theta < -0.1) throw(-1);
@@ -274,7 +274,7 @@ template<typename T>
 void CIC_deposit(T *particles, double *origin, T *delta,
                  T *vw, T *counts,
                  idx_t nparticles, double count_density,
-                 double max_r, double min_r, int NR, int NSIDE)
+                 double max_r, double min_r, int NR, int NSIDE, double shift)
 {
     // Healpix instance
     T_Healpix_Base<int> * HP = new T_Healpix_Base<int>
@@ -294,7 +294,7 @@ void CIC_deposit(T *particles, double *origin, T *delta,
         double vy = particles[p*6 + 4];
         double vz = particles[p*6 + 5];
 
-        double r = std::sqrt(x*x + y*y + z*z);
+        double r = std::sqrt(x*x + y*y + z*z) + shift;
         // get chi, theta, phi
         double theta = std::acos(z/r);
         if(theta < -0.1) throw(-1);
