@@ -49,7 +49,7 @@ class Lightcone:
         # setting multigrid parameters
         alm_iter = keyws.get('alm_iter', 50)
         depth = keyws.get('depth', 5)
-        n_vcycles = keyws.get('n_vcycles', 100)
+        n_vcycles = keyws.get('n_vcycles', 80)
         npre = keyws.get('npre', 16)
         npost = keyws.get('npost', 16)
         lmax = keyws.get('lmax', 2 * NSIDE - 1)
@@ -705,10 +705,12 @@ class LightconeFromSnaps(Lightcone):
         self.zel_z = zel_z
 
         self.depo_method = kwargs.get('depo_method', 'NGP')
+        self.lc_shift = kwargs.get('lc_shift', 0)
 
         if (zel_z is not None):
             self.zel_a = 1 / (1 + zel_z)
-            self.zel_r = scpy.integrate.quad(self.Hint, 0, zel_z)[0]
+            self.zel_r = scpy.integrate.quad(self.Hint, 0,
+                                             zel_z)[0] + self.lc_shift
 
         t = sorted(glob.glob(snaps_path))
         self.names = list()
@@ -722,9 +724,6 @@ class LightconeFromSnaps(Lightcone):
                 self.names.append(
                     os.path.commonprefix(t[i:i + n_threads]) + '[0-9]*')
 
-        if (need_reduce is True):
-            self.names = self.names[1::reduce_ratio]
-
         self.n_snaps = len(self.names)
 
         for file in self.names:
@@ -733,21 +732,10 @@ class LightconeFromSnaps(Lightcone):
                 ('GadgetVelocity',  ('auto', 3), 'all', ),
                 ('ID', 'auto', 'all', )]))
 
-        # Check if the input data are in increasing order
-        for fi in range(1, self.n_snaps):
-            if (files[fi].attrs['Redshift'] <=
-                    files[fi - 1].attrs['Redshift']):
-                raise ValueError(
-                    'The redshifts are not increasing for input snaps!')
-
-        #Checking if the range of init_snap_i and final_snap_i are within range
-        if (init_snap_i < 0):
-            init_snap_i += self.n_snaps
         print("Initial snap is set at redshift " +
               str(files[init_snap_i].attrs['Redshift']),
               flush=True)
-        if (final_snap_i < 0):
-            final_snap_i += self.n_snaps
+
         print("Final snap is set at redshift " +
               str(files[final_snap_i].attrs['Redshift']),
               flush=True)
@@ -758,18 +746,42 @@ class LightconeFromSnaps(Lightcone):
         self.final_a = 1 / (1 + self.final_z)
 
         # Initial comoving distance
-        self.init_r = scpy.integrate.quad(self.Hint, 0, self.init_z)[0]
+        self.init_r = scpy.integrate.quad(self.Hint, 0,
+                                          self.init_z)[0] + self.lc_shift
 
         # Final comoving distance
-        self.final_r = scpy.integrate.quad(self.Hint, 0, self.final_z)[0]
+        self.final_r = scpy.integrate.quad(self.Hint, 0,
+                                           self.final_z)[0] + self.lc_shift
+
+        if (need_reduce is True):
+            temp = self.names[1::reduce_ratio]
+            temp.insert(0, self.names[0])
+            self.names = temp
+
+            self.n_snaps = len(self.names)
+            # clean-up original files array
+            files = list()
+            for file in self.names:
+                files.append(Gadget1Catalog(file,columndefs=[ \
+                    ('Position', ('auto', 3), 'all',),
+                    ('GadgetVelocity',  ('auto', 3), 'all', ),
+                    ('ID', 'auto', 'all', )]))
+
+        # Check if the input data are in increasing order
+        for fi in range(1, self.n_snaps):
+            if (files[fi].attrs['Redshift'] <=
+                    files[fi - 1].attrs['Redshift']):
+                raise ValueError(
+                    'The redshifts are not increasing for input snaps!')
 
         if (NR_is_N_snap is True):
             """If we do want to build a lightcone mesh just based on snapshots
             data without any further information.
             """
-            self.NR = init_snap_i - final_snap_i
+            #self.NR = init_snap_i - final_snap_i
+            self.NR = self.n_snaps - 2
             print('Setting the radial resolution NR as ' + str(self.NR) +
-                  'since we do want NR is N_snap',
+                  ' since we do want NR is N_snap',
                   flush=True)
 
             self.a = npy.array([1/(1+scpy.optimize.minimize_scalar(
@@ -777,9 +789,10 @@ class LightconeFromSnaps(Lightcone):
                               for n in range(self.NR+1)])
             self.Phi = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
             self.Pi = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
-            for fi in range(init_snap_i, final_snap_i - 1, -1):
-
-                ni = self.NR - (init_snap_i - fi)
+            self.dPhi = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
+            #for fi in range(init_snap_i, final_snap_i - 1, -1):
+            for fi in range(self.n_snaps - 1, 0, -1):
+                ni = self.NR - (self.n_snaps - 1 - fi)
 
                 files[fi]['Position'] *= 1 / self.hL_unit
                 files[fi].attrs['BoxSize'] = self.L_snap
@@ -792,17 +805,34 @@ class LightconeFromSnaps(Lightcone):
                 snap = npy.ascontiguousarray(ut.inverse_Lap(
                     rf, self.L_snap, self.N_snap),
                                              dtype=self.pdtype)
-                r = scpy.integrate.quad(self.Hint, 0,
-                                        files[fi].attrs['Redshift'])[0]
+                r = scpy.integrate.quad(
+                    self.Hint, 0,
+                    files[fi].attrs['Redshift'])[0] + self.lc_shift
                 print(str(ni) + ' ' + str(r) + ' ' +
                       str(files[fi].attrs['Redshift']),
                       flush=True)
+
                 self.Phi[ni] = utC.interp(snap, npy.array(rf.BoxSize/rf.Nmesh),
                     npy.ascontiguousarray([ [\
                     r * npy.sin(self.theta_list[i]) * npy.cos(self.phi_list[i]) + origin[0],\
                     r * npy.sin(self.theta_list[i]) * npy.sin(self.phi_list[i]) + origin[1],\
                     r * npy.cos(self.theta_list[i]) + origin[2]]  \
                                             for i in range(self.NPIX)], dtype=self.pdtype))
+
+                if (fi == self.n_snaps - 1):
+                    pre_snap = snap.copy()
+
+                self.dPhi[ni] = \
+                        utC.interp(
+                            snap - pre_snap, npy.array(rf.BoxSize / rf.Nmesh),
+                            npy.ascontiguousarray(
+                        [ [
+                            r * npy.sin(self.theta_list[i]) * npy.cos(self.phi_list[i]) + origin[0],\
+                            r * npy.sin(self.theta_list[i]) * npy.sin(self.phi_list[i]) + origin[1],\
+                            r * npy.cos(self.theta_list[i]) + origin[2]]  \
+                          for i in range(self.NPIX)], dtype=self.pdtype))
+                pre_snap = snap.copy()
+
                 self.Pi[ni] = utC.f_r_derv(
                     snap, npy.array(rf.BoxSize / rf.Nmesh), r,
                     npy.ascontiguousarray(
@@ -912,7 +942,9 @@ class LightconeFromSnaps(Lightcone):
                                             dtype=self.pdtype)
                 IDs = npy.ascontiguousarray(i)
 
-                state = self.snap_den.proc_snap_chunk(pos, vel, IDs, tau, dtau)
+                state = self.snap_den.proc_snap_chunk(pos, vel, IDs,
+                                                      tau - self.lc_shift,
+                                                      dtau)
                 if (fi == self.n_snaps - 1):
                     continue
 
@@ -922,8 +954,8 @@ class LightconeFromSnaps(Lightcone):
 
                 p_num = int(self.snap_den.p_num() / 6)
                 self.tot_p_num += p_num
-                print(str(fi) + ' ' + str(tau) + ' ' + str(dtau) + ' ' +
-                      str(p_num),
+                print(str(fi) + ' ' + str(files[fi].attrs['Redshift']) + ' ' +
+                      str(dtau) + ' ' + str(p_num),
                       flush=True)
                 if (p_num == 0):
                     continue
@@ -940,6 +972,7 @@ class LightconeFromSnaps(Lightcone):
                         utC.interp(rf_i2, self.dx,
                                    npy.ascontiguousarray(pdata[:, 0:3]))[:, None] \
                                    * [0, 0, 1, 0, 0, 0]
+
                 lc_CIC.deposit(pdata, self.origin, self.delta, count_density,
                                self.vw, counts, self.init_r, self.final_r,
                                self.NR, self.NSIDE, self.depo_method)
