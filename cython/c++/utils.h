@@ -10,7 +10,7 @@ typedef int idx_t;
 
 
 
-#define IDX(i, j, k, nx, ny, nz) ( ( ((i)%(nx) + nx)% nx ) * (ny) * (nz) + ( ( (j)%(ny) + ny)%ny ) * (nz) + ( ((k)%(nz) + nz)%nz ) )
+#define IDX(i, j, k, nx, ny, nz) ( (long long)( ((i)%(nx) + nx)% nx ) * (ny) * (nz) + (long long)( ( (j)%(ny) + ny)%ny ) * (nz) + (long long)(((k)%(nz) + nz)%nz ) )
 
 template<typename T>
 void _interp(T *d, double *dx, int nx, int ny, int nz,
