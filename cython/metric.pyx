@@ -811,5 +811,5 @@ class Metric:
         #del self.Phi_hier
         #del self.Pi_hier
 
-        #del self.delta_hier
-        #del self.vw_hier
+        del self.delta_hier
+        del self.vw_hier
