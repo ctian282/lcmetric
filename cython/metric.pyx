@@ -707,7 +707,7 @@ class Metric:
 
 
     def init_from_slice(self, z_i_in, r_max_in, delta_in, vw_in, Phi_i_in, Pi_i_in, \
-                        Params, r_min_in, Phi_f_in, Omega_i = None, depo_method='NGP'):
+                        Params, r_min_in, Phi_f_in, Omega_i=None, depo_method='NGP'):
         """Sample function of setting-up initial data
         Parameters
         ----------

@@ -239,6 +239,7 @@ class Lightcone:
                                  self.cosmo_paras,
                                  self.final_r,
                                  self.Phi_f,
+                                 Omega_i=self.Omega_i,
                                  depo_method=depo_method)
 
 
@@ -503,6 +504,7 @@ class LightconeFromCone(Lightcone):
         self.final_a = 1 / (1 + self.final_z)
 
         self.depo_method = kwargs.get('depo_method', 'NGP')
+        self.linear_Omega = kwargs.get('linear_Omega', True)
 
         # Initial comoving distance
         self.init_r = scpy.integrate.quad(self.Hint, 0, init_z)[0]
@@ -531,12 +533,16 @@ class LightconeFromCone(Lightcone):
                                                 self.theta_list,
                                                 self.phi_list,
                                                 win_func=True)
-        vx, vy, vz = self.read_snap_velocity(Phi_i_path, snap_type,
-                                             self.init_a)
-        Hubble = ut.H(self.init_z, self.cosmo_paras['h'] * 100,
-                      self.cosmo_paras['Omega_m'], self.cosmo_paras['Omega_L'])
-        self.Omega_i = -self.Omega_gen(delta_i, vx, vy, vz, Hubble,
-                                       self.init_a, self.init_r)
+        self.Omega_i = None
+        if self.linear_Omega == False:
+            vx, vy, vz = self.read_snap_velocity(Phi_i_path, snap_type,
+                                                 self.init_a)
+            Hubble = ut.H(self.init_z, self.cosmo_paras['h'] * 100,
+                          self.cosmo_paras['Omega_m'],
+                          self.cosmo_paras['Omega_L'])
+
+            self.Omega_i = -self.Omega_gen(delta_i, vx, vy, vz, Hubble,
+                                           self.init_a, self.init_r)
 
         print("Starting reading final snap", flush=True)
         delta_f = self.read_snap_density(Phi_f_path, snap_type, self.final_a)
@@ -573,11 +579,7 @@ class LightconeFromCone(Lightcone):
         # reading light-cone
         self.delta, self.vw, counts = \
             self.read_lc_density(cone_path, cone_type, rf_i0, rf_i1, rf_i2,
-                                 lensing_kappa=lensing_kappa, chunk=chunk)
-
-        # self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
-        #                          self.Phi_i, self.Pi_i, self.cosmo_paras,
-        #                          self.final_r, self.Phi_f)
+                                 lensing_kappa=lensing_kappa, chunk=chunk, np=6)
 
     # Reading lp-cola unformatted files
     def unf_read_file(self, file, p_list=[], np=7):
@@ -799,6 +801,7 @@ class LightconeFromSnaps(Lightcone):
         self.zel_z = zel_z
 
         self.depo_method = kwargs.get('depo_method', 'NGP')
+        self.linear_Omega = kwargs.get('linear_Omega', True)
         self.lc_shift = kwargs.get('lc_shift', 0)
 
         if (zel_z is not None):
@@ -992,12 +995,16 @@ class LightconeFromSnaps(Lightcone):
                                                 self.theta_list,
                                                 self.phi_list,
                                                 win_func=True)
-        vx, vy, vz = self.read_snap_velocity(self.names[init_snap_i],
-                                             snap_type, self.init_a)
-        Hubble = ut.H(self.init_z, self.cosmo_paras['h'] * 100,
-                      self.cosmo_paras['Omega_m'], self.cosmo_paras['Omega_L'])
-        self.Omega_i = -self.Omega_gen(delta_i, vx, vy, vz, Hubble,
-                                       self.init_a, self.init_r)
+
+        self.Omega_i = None
+        if self.linear_Omega == False:
+            vx, vy, vz = self.read_snap_velocity(self.names[init_snap_i],
+                                                 snap_type, self.init_a)
+            Hubble = ut.H(self.init_z, self.cosmo_paras['h'] * 100,
+                          self.cosmo_paras['Omega_m'],
+                          self.cosmo_paras['Omega_L'])
+            self.Omega_i = -self.Omega_gen(delta_i, vx, vy, vz, Hubble,
+                                           self.init_a, self.init_r)
 
         print("Starting reading final snap", flush=True)
         self.Phi_f, self.Pi_f = self.Phi_Pi_gen(self.read_snap_density(
