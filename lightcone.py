@@ -49,7 +49,7 @@ class Lightcone:
         # setting multigrid parameters
         alm_iter = keyws.get('alm_iter', 50)
         depth = keyws.get('depth', 5)
-        n_vcycles = keyws.get('n_vcycles', 80)
+        n_vcycles = keyws.get('n_vcycles', 100)
         npre = keyws.get('npre', 16)
         npost = keyws.get('npost', 16)
         lmax = keyws.get('lmax', 2 * NSIDE - 1)
