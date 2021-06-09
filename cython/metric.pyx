@@ -74,7 +74,7 @@ cdef dPi_dt_upper_bd(int npix, comp_t [::1] Phi,
             #     - (2 * Hubble_dt + Hubble**2) * Phi[p] \
             #     + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
             res[p] = - 2 * Hubble * Pi[p]\
-                - Hubble * ( (Phi_m1[p] - Phi[p])/ dtau) \
+                - Hubble * ( (Phi_m2[p] - Phi[p])/ (2 * dtau) ) \
                 - (2 * Hubble_dt + Hubble**2) * Phi[p] \
                 + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
 
@@ -92,7 +92,7 @@ cdef dPi_dt_lower_bd(int npix, comp_t [::1] Phi,
         for p in prange(npix, nogil=True):
         #for p in range(npix):
             res[p] =  - 2 * Hubble * Pi[p] \
-                - Hubble *  (  (Phi[p] - Phi_p1[p]) / (dtau))\
+                - Hubble *  (  (Phi[p] - Phi_p2[p]) / (2 * dtau))\
                 - (2 * Hubble_dt + Hubble**2) * Phi[p] \
                 + 1.5 * Hubble_0**2 * Omega_m / a * vw[p]
 
@@ -445,6 +445,16 @@ class Metric:
                         + (self.Ntau - step) / (self.Ntau) \
                         * (self.sols[field][0] - self.sols[field][self.Ntau])
 
+        # for step in  reversed(range(1, self.Ntau)):
+        #     for field in self.sols:
+        #         if(field == 'Phi'):
+        #             self.sols[field][step] = npy.ascontiguousarray(\
+        #                 1.5 * self.Hubble_0**2 * self.Omega_m / self.metric_f['a'][step] \
+        #                 * hp.sphtfunc.alm2map((hp.sphtfunc.map2alm(
+        #                     self.matter['delta'][step], lmax = self.lmax, iter = self.alm_iter)
+        #                                        * npy.nan_to_num(1/ self.lm, posinf=0) ).astype(npy.cdouble)
+        #                                       , nside = self.nside) \
+        #                                                            * self.to_tau(step, 0)**2, dtype=self.pdtype)
     # Only restricing boundary data for Pi
     # used by integration
     def Pi_bd_restrict(self, d):
@@ -479,17 +489,42 @@ class Metric:
         tdata[d-1][1:-1:2] = 0.5 * (data[d][0:-1] + data[d][1:])
         tdata[d-1][0] = data[d][0]
 
-    def to_alm(self, data, array_data = True):
+    def to_alm(self, data, array_data = True, pixwin=None):
 
         if(array_data == True):
-            return npy.ascontiguousarray( [hp.sphtfunc.map2alm(
-                data[n], lmax = self.lmax, iter = self.alm_iter) \
-                                           for n in range(len(data))],
-                                          dtype=self.cdtype)
+            if(pixwin == None):
+                return npy.ascontiguousarray( [hp.sphtfunc.map2alm(
+                    data[n], lmax = self.lmax, iter = self.alm_iter) \
+                                               for n in range(len(data))],
+                                              dtype=self.cdtype)
+            elif(pixwin == 'CIC'):
+                return npy.ascontiguousarray( [hp.almxfl(hp.sphtfunc.map2alm(
+                    data[n], lmax = self.lmax, iter = self.alm_iter), 1 / hp.pixwin(self.nside)**2 ) \
+                                               for n in range(len(data))],
+                                              dtype=self.cdtype)
+            elif(pixwin == 'NGP'):
+                return npy.ascontiguousarray( [hp.almxfl(hp.sphtfunc.map2alm(
+                    data[n], lmax = self.lmax, iter = self.alm_iter), 1 / hp.pixwin(self.nside) ) \
+                                               for n in range(len(data))],
+                                              dtype=self.cdtype)
+            else:
+                raise ValueError('pixwin type' + str(pixwin))
         else:
-            return npy.ascontiguousarray(hp.sphtfunc.map2alm(
-                data, lmax = self.lmax, iter = self.alm_iter),
-                                         dtype=self.cdtype)
+            if(pixwin == None):
+                return npy.ascontiguousarray(hp.sphtfunc.map2alm(
+                    data, lmax = self.lmax, iter = self.alm_iter),
+                                             dtype=self.cdtype)
+            elif(pixwin == 'CIC'):
+                return npy.ascontiguousarray(hp.almxfl(hp.sphtfunc.map2alm(
+                    data, lmax = self.lmax, iter = self.alm_iter), 1 / hp.pixwin(self.nside)**2 ),
+                                             dtype=self.cdtype)
+            elif(pixwin == 'NGP'):
+                return npy.ascontiguousarray(hp.almxfl(hp.sphtfunc.map2alm(
+                    data, lmax = self.lmax, iter = self.alm_iter), 1 / hp.pixwin(self.nside) ),
+                                             dtype=self.cdtype)
+            else:
+                raise ValueError('pixwin type' + str(pixwin))
+
 
     def to_real(self, data, array_data = True):
         if(array_data == True):
@@ -529,8 +564,8 @@ class Metric:
             self.Pi_hier[0] = self.to_alm(self.sols['Pi'])
 
 
-        self.delta_hier[0] = self.to_alm(self.matter['delta'])
-        self.vw_hier[0] = self.to_alm(self.matter['vw'])
+        self.delta_hier[0] = self.to_alm(self.matter['delta'], pixwin=self.depo_method)
+        self.vw_hier[0] = self.to_alm(self.matter['vw'], pixwin=self.depo_method)
 
         self.a_hier[0] = self.metric_f['a']
         self.Hubble_hier[0] = self.metric_f['Hubble']
@@ -672,7 +707,7 @@ class Metric:
 
 
     def init_from_slice(self, z_i_in, r_max_in, delta_in, vw_in, Phi_i_in, Pi_i_in, \
-                        Params, r_min_in, Phi_f_in):
+                        Params, r_min_in, Phi_f_in, Omega_i = None, depo_method='NGP'):
         """Sample function of setting-up initial data
         Parameters
         ----------
@@ -702,6 +737,7 @@ class Metric:
         self.Ntau = delta_in.shape[0] - 2
 
         self.pdtype = Phi_i_in.dtype
+        self.depo_method = depo_method
 
         if self.pdtype == npy.single:
             self.cdtype = npy.csingle
@@ -746,12 +782,12 @@ class Metric:
         self.init()
 
         # Omega_i = npy.ascontiguousarray(npy.load(
-        #     "/media/chris/3b7ae93c-9459-4858-9b27-3209d1805b9a/draft_data/Metric_recon/con_test_256_phi/Omega_nl_vel.npy")
+        #     "/media/chris/3b7ae93c-9459-4858-9b27-3209d1805b9a/draft_data/Metric_recon/con_test_256_phi/Omega_nl.npy")
         #                                 , dtype=self.pdtype)
-
-        Omega_i = self.metric_f['Hubble'][self.Ntau] * \
-            Phi_i_in * (((Params['Omega_m'] * (1 + z_i_in)**3 ) \
-            / (Params['Omega_m'] * (1 + z_i_in)**3 + Params['Omega_L']))**0.55 - 1)
+        if(Omega_i is None):
+            Omega_i = self.metric_f['Hubble'][self.Ntau] * \
+                Phi_i_in * (((Params['Omega_m'] * (1 + z_i_in)**3 ) \
+                             / (Params['Omega_m'] * (1 + z_i_in)**3 + Params['Omega_L']))**0.55 - 1)
 
         self.Pi_i = self.to_alm(self.sols['Pi'][-1], array_data=False)
         self.sols['Pi'][-1] =  Omega_i

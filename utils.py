@@ -154,17 +154,27 @@ def derv_scalar(field, L, N):
     return npy.real(npy.fft.ifftn(ans))
 
 
-def inverse_Lap(field, L, N):
+def inverse_Lap(field, L, N, win_func=False):
     k2s = fftFreqs(L, N)**2
-    k2s[0, 0, 0] = 1
 
-    field = scale(field, 1.0 / k2s**2)
+    k2s[0, 0, 0] = 1
+    if (win_func == True):
+        # the sinc has normalizatin of \pi by default
+        win = (npy.sinc(npy.fft.fftfreq(N, 1/N) / N)[:,None,None]\
+               * npy.sinc(npy.fft.fftfreq(N, 1/N) / N)[None,:,None]\
+               * npy.sinc(npy.fft.fftfreq(N, 1/N) / N)[None,None,:])**2
+
+        field = scale(field, 1 / (k2s**2 * win**2))
+    else:
+        field = scale(field, 1.0 / k2s**2)
+
     field = -field
     return field
 
 
 def scale(field, pks):
     field_fft = npy.fft.fftn(field)
+
     field_fft *= npy.sqrt(pks)
     field_fft[0, 0, 0] = 0
     return npy.real(npy.fft.ifftn(field_fft))

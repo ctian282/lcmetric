@@ -127,7 +127,79 @@ class Lightcone:
                 (1.5 * (self.cosmo_paras['h'] * 100)**2 *
                  self.cosmo_paras['Omega_m'] / a))
 
-    def Phi_Pi_gen(self, rf, r, theta_list, phi_list):
+    def read_snap_velocity(self, path, snap_type, a):
+        if (snap_type == 'CSV'):
+            # Start reading initial snapshot and setting initial data
+            f = CSVCatalog(path, ['x', 'y', 'z', 'vx', 'vy', 'vz', 'phi'],
+                           dtype=self.pdtype)
+
+            f['Position'] = (f['x'][:, None]) * [1/self.hL_unit, 0, 0] \
+                + (f['y'][:, None]) * [0, 1/self.hL_unit, 0] \
+                + (f['z'][:, None]) * [0, 0, 1/self.hL_unit]
+
+            f.attrs['BoxSize'] = self.L_snap
+        elif (snap_type == 'Gadget1'):
+            f = Gadget1Catalog(path,
+                               columndefs=[
+                                   (
+                                       'Position',
+                                       ('auto', 3),
+                                       'all',
+                                   ),
+                                   (
+                                       'GadgetVelocity',
+                                       ('auto', 3),
+                                       'all',
+                                   ),
+                                   (
+                                       'ID',
+                                       'auto',
+                                       'all',
+                                   ),
+                               ])
+            f['Position'] *= 1 / self.hL_unit
+            f.attrs['BoxSize'] = self.L_snap
+        else:
+            raise ValueError('Snap data type is not supported!')
+
+        self.N_snap_part = f['Position'].shape[0]
+        f['vx'] = f['GadgetVelocity'][:, 0] \
+            * (npy.sqrt(a)) / (3e5)
+        f['vy'] = f['GadgetVelocity'][:, 1] \
+            * (npy.sqrt(a)) / (3e5)
+        f['vz'] = f['GadgetVelocity'][:, 2] \
+            * (npy.sqrt(a)) / (3e5)
+        return (f.to_mesh(self.N_snap, value='vx',
+                          dtype=self.pdtype).to_real_field(normalize=True),
+                f.to_mesh(self.N_snap, value='vy',
+                          dtype=self.pdtype).to_real_field(normalize=True),
+                f.to_mesh(self.N_snap, value='vz',
+                          dtype=self.pdtype).to_real_field(normalize=True))
+
+    def Omega_gen(self, delta, vx_un, vy_un, vz_un, Hubble, a, r):
+        pp = npy.zeros((self.N_snap, self.N_snap, self.N_snap, 3),
+                       dtype=self.pdtype)
+        pp[:, :, :, 0] = vx_un
+        pp[:, :, :, 1] = vy_un
+        pp[:, :, :, 2] = vz_un
+        x_list = npy.array([
+            r * npy.sin(self.theta_list) * npy.cos(self.phi_list) +
+            self.origin[0],
+            r * npy.sin(self.theta_list) * npy.sin(self.phi_list) +
+            self.origin[1], r * npy.cos(self.theta_list) + self.origin[2]
+        ],
+                           dtype=self.pdtype)
+        x_list = npy.ascontiguousarray(npy.transpose(x_list))
+
+        Omega = npy.ascontiguousarray(
+            ut.inverse_Lap(
+                1.5 * (self.cosmo_paras['h']* 100)**2 * self.cosmo_paras['Omega_m'] / a
+                    * ut.derv_scalar(pp, self.L_snap, self.N_snap) + \
+                       Hubble * (delta), self.L_snap, self.N_snap), dtype=self.pdtype)
+        Omega = utC.interp(Omega, self.dx, x_list)
+        return Omega
+
+    def Phi_Pi_gen(self, rf, r, theta_list, phi_list, win_func=False):
         x_list = npy.array([
             r * npy.sin(theta_list) * npy.cos(phi_list) + self.origin[0],
             r * npy.sin(theta_list) * npy.sin(phi_list) + self.origin[1],
@@ -137,7 +209,7 @@ class Lightcone:
         x_list = npy.ascontiguousarray(npy.transpose(x_list))
 
         Phi = npy.ascontiguousarray(ut.inverse_Lap(rf, self.L_snap,
-                                                   self.N_snap),
+                                                   self.N_snap, win_func),
                                     dtype=self.pdtype)
         Pi = utC.f_r_derv(Phi, npy.array([self.L_snap / self.N_snap] * 3), r,
                           x_list)
@@ -146,18 +218,28 @@ class Lightcone:
         return (Phi, Pi)
 
     def init_build_lcmetric(self):
-        self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
-                                 self.Phi_i, self.Pi_i, self.cosmo_paras,
-                                 self.final_r, self.Phi_f)
-        self.met.build_lcmetric()
+        self.init_metric()
+        self.build_lcmetric()
 
     def build_lcmetric(self):
         self.met.build_lcmetric()
 
     def init_metric(self):
-        self.met.init_from_slice(self.init_z, self.init_r, self.delta, self.vw,
-                                 self.Phi_i, self.Pi_i, self.cosmo_paras,
-                                 self.final_r, self.Phi_f)
+        if hasattr(self, 'depo_method') == True:
+            depo_method = self.depo_method
+        else:
+            raise ValueError('depo_method is not specified!')
+
+        self.met.init_from_slice(self.init_z,
+                                 self.init_r,
+                                 self.delta,
+                                 self.vw,
+                                 self.Phi_i,
+                                 self.Pi_i,
+                                 self.cosmo_paras,
+                                 self.final_r,
+                                 self.Phi_f,
+                                 depo_method=depo_method)
 
 
 class LightconeFromConePhi(Lightcone):
@@ -443,14 +525,26 @@ class LightconeFromCone(Lightcone):
         self.Hf = self.H(self.final_z)
 
         print("Starting reading initial snap", flush=True)
-        self.Phi_i, self.Pi_i = self.Phi_Pi_gen(
-            self.read_snap_density(Phi_i_path, snap_type, self.init_a),
-            self.init_r, self.theta_list, self.phi_list)
+        delta_i = self.read_snap_density(Phi_i_path, snap_type, self.init_a)
+        self.Phi_i, self.Pi_i = self.Phi_Pi_gen(delta_i,
+                                                self.init_r,
+                                                self.theta_list,
+                                                self.phi_list,
+                                                win_func=True)
+        vx, vy, vz = self.read_snap_velocity(Phi_i_path, snap_type,
+                                             self.init_a)
+        Hubble = ut.H(self.init_z, self.cosmo_paras['h'] * 100,
+                      self.cosmo_paras['Omega_m'], self.cosmo_paras['Omega_L'])
+        self.Omega_i = -self.Omega_gen(delta_i, vx, vy, vz, Hubble,
+                                       self.init_a, self.init_r)
 
         print("Starting reading final snap", flush=True)
-        self.Phi_f, self.Pi_f = self.Phi_Pi_gen(
-            self.read_snap_density(Phi_f_path, snap_type, self.final_a),
-            self.final_r, self.theta_list, self.phi_list)
+        delta_f = self.read_snap_density(Phi_f_path, snap_type, self.final_a)
+        self.Phi_f, self.Pi_f = self.Phi_Pi_gen(delta_f,
+                                                self.final_r,
+                                                self.theta_list,
+                                                self.phi_list,
+                                                win_func=True)
 
         # print("Finishing reading snaps")
         print("Starting reading lightcone data", flush=True)
@@ -790,14 +884,48 @@ class LightconeFromSnaps(Lightcone):
             self.Phi = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
             self.Pi = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
             self.dPhi = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
+            self.Omega = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
             #for fi in range(init_snap_i, final_snap_i - 1, -1):
             for fi in range(self.n_snaps - 1, 0, -1):
                 ni = self.NR - (self.n_snaps - 1 - fi)
 
                 files[fi]['Position'] *= 1 / self.hL_unit
                 files[fi].attrs['BoxSize'] = self.L_snap
+                r = scpy.integrate.quad(
+                    self.Hint, 0,
+                    files[fi].attrs['Redshift'])[0] + self.lc_shift
+
                 rf = (files[fi].to_mesh(self.N_snap, dtype=self.pdtype).to_real_field(normalize=False)  \
-                    * ( self.N_snap**3 / files[fi]['Position'].shape[0] )  - 1.0 )
+                      * ( self.N_snap**3 / files[fi]['Position'].shape[0] ) - 1.0 )
+
+                # Getting (\delta) * v
+                files[fi]['vx'] = files[fi]['GadgetVelocity'][:, 0] \
+                    * (npy.sqrt(1 / (1 + files[fi].attrs['Redshift'])) / (3e5))
+                files[fi]['vy'] = files[fi]['GadgetVelocity'][:, 1] \
+                    * (npy.sqrt(1 / (1 + files[fi].attrs['Redshift'])) / (3e5))
+                files[fi]['vz'] = files[fi]['GadgetVelocity'][:, 2] \
+                    * (npy.sqrt(1 / (1 + files[fi].attrs['Redshift'])) / (3e5))
+
+                pp = npy.zeros((self.N_snap, self.N_snap, self.N_snap, 3),
+                               dtype=self.pdtype)
+                pp[:,:,:, 0] = \
+                    files[fi].to_mesh(N_snap, value='vx',
+                              dtype=self.pdtype).to_real_field(normalize=True)
+                pp[:,:,:, 1] = \
+                    files[fi].to_mesh(N_snap, value='vy',
+                              dtype=self.pdtype).to_real_field(normalize=True)
+                pp[:,:,:, 2] = \
+                    files[fi].to_mesh(N_snap, value='vz',
+                              dtype=self.pdtype).to_real_field(normalize=True)
+                Hubble = ut.H(files[fi].attrs['Redshift'],
+                              cosmo_paras['h'] * 100, cosmo_paras['Omega_m'],
+                              cosmo_paras['Omega_L'])
+
+                self.Omega[ni] = self.Phi_Pi_gen(
+                    1.5 * (cosmo_paras['h']* 100)**2 * cosmo_paras['Omega_m']
+                    * (1 + files[fi].attrs['Redshift'])\
+                    * (ut.derv_scalar(pp, self.L_snap, self.N_snap) + \
+                       Hubble * (rf )), r, self.theta_list, self.phi_list)[0]
 
                 rf *= (1.5 * (cosmo_paras['h'] * 100)**2 *
                        cosmo_paras['Omega_m'] *
@@ -805,9 +933,6 @@ class LightconeFromSnaps(Lightcone):
                 snap = npy.ascontiguousarray(ut.inverse_Lap(
                     rf, self.L_snap, self.N_snap),
                                              dtype=self.pdtype)
-                r = scpy.integrate.quad(
-                    self.Hint, 0,
-                    files[fi].attrs['Redshift'])[0] + self.lc_shift
                 print(str(ni) + ' ' + str(r) + ' ' +
                       str(files[fi].attrs['Redshift']),
                       flush=True)
@@ -860,16 +985,27 @@ class LightconeFromSnaps(Lightcone):
               flush=True)
 
         print("Starting reading initial snap", flush=True)
-        self.Phi_i, self.Pi_i = self.Phi_Pi_gen(
-            self.read_snap_density(self.names[init_snap_i], snap_type,
-                                   self.init_a), self.init_r, self.theta_list,
-            self.phi_list)
+        delta_i = self.read_snap_density(self.names[init_snap_i], snap_type,
+                                         self.init_a)
+        self.Phi_i, self.Pi_i = self.Phi_Pi_gen(delta_i,
+                                                self.init_r,
+                                                self.theta_list,
+                                                self.phi_list,
+                                                win_func=True)
+        vx, vy, vz = self.read_snap_velocity(self.names[init_snap_i],
+                                             snap_type, self.init_a)
+        Hubble = ut.H(self.init_z, self.cosmo_paras['h'] * 100,
+                      self.cosmo_paras['Omega_m'], self.cosmo_paras['Omega_L'])
+        self.Omega_i = -self.Omega_gen(delta_i, vx, vy, vz, Hubble,
+                                       self.init_a, self.init_r)
 
         print("Starting reading final snap", flush=True)
-        self.Phi_f, self.Pi_f = self.Phi_Pi_gen(
-            self.read_snap_density(self.names[final_snap_i], snap_type,
-                                   self.final_a), self.final_r,
-            self.theta_list, self.phi_list)
+        self.Phi_f, self.Pi_f = self.Phi_Pi_gen(self.read_snap_density(
+            self.names[final_snap_i], snap_type, self.final_a),
+                                                self.final_r,
+                                                self.theta_list,
+                                                self.phi_list,
+                                                win_func=True)
 
         rf_i0 = None
         rf_i1 = None
