@@ -933,8 +933,10 @@ class LightconeFromSnaps(Lightcone):
                 rf *= (1.5 * (cosmo_paras['h'] * 100)**2 *
                        cosmo_paras['Omega_m'] *
                        (1 + files[fi].attrs['Redshift']))
-                snap = npy.ascontiguousarray(ut.inverse_Lap(
-                    rf, self.L_snap, self.N_snap),
+                snap = npy.ascontiguousarray(ut.inverse_Lap(rf,
+                                                            self.L_snap,
+                                                            self.N_snap,
+                                                            win_func=True),
                                              dtype=self.pdtype)
                 print(str(ni) + ' ' + str(r) + ' ' +
                       str(files[fi].attrs['Redshift']),
