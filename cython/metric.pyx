@@ -555,6 +555,20 @@ class Metric:
         self.rhs_hier = [None] * self.depth
         self.rl_hier = [None] * self.depth
 
+        # Calculating tau (r) hier and dtau hier
+        self.h_size[0] = self.Ntau  + 1
+        n = self.h_size[0] #h_size includes both ends
+        for d in range(self.depth-1):
+            if(n %2 == 0):
+                n = int(n /2)
+            else:
+                n = int((n + 1) / 2)
+            self.h_size[d+1] = n
+
+        for d in range(self.depth):
+            self.tau_hier[d] = npy.array([self.to_tau(i, d) for i in range(self.h_size[d])])
+            self.dtau_hier[d] = (self.tau_i - self.tau_f) / self.Ntau * 2**d
+
 
         if(alm_form == True):
             self.Phi_hier[0] = self.sols['Phi']
@@ -563,9 +577,21 @@ class Metric:
             self.Phi_hier[0] = self.to_alm(self.sols['Phi'])
             self.Pi_hier[0] = self.to_alm(self.sols['Pi'])
 
-
         self.delta_hier[0] = self.to_alm(self.matter['delta'], pixwin=self.depo_method)
         self.vw_hier[0] = self.to_alm(self.matter['vw'], pixwin=self.depo_method)
+
+        if self.sm_dx > 0:
+            print('Smothing delta and v with sm_dx ' + str(self.sm_dx), flush=True)
+
+            for n in range(self.Ntau + 1):
+                self.delta_hier[0][n] = hp.smoothalm(self.delta_hier[0][n],
+                                                     fwhm = self.sm_dx/self.tau_hier[0][n]/2,
+                                                     inplace=False,
+                                                     verbose=False)
+                self.vw_hier[0][n] = hp.smoothalm(self.vw_hier[0][n],
+                                                  fwhm = self.sm_dx/self.tau_hier[0][n]/2,
+                                                  inplace=False,
+                                                  verbose=False)
 
         self.a_hier[0] = self.metric_f['a']
         self.Hubble_hier[0] = self.metric_f['Hubble']
@@ -613,9 +639,6 @@ class Metric:
             self.hier_restrict(self.Hubble_dt_hier, d)
 
 
-        for d in range(self.depth):
-            self.tau_hier[d] = npy.array([self.to_tau(i, d) for i in range(self.h_size[d])])
-            self.dtau_hier[d] = (self.tau_i - self.tau_f) / self.Ntau * 2**d
 
 
     #-------------Initializations------------------------------------
@@ -707,7 +730,8 @@ class Metric:
 
 
     def init_from_slice(self, z_i_in, r_max_in, delta_in, vw_in, Phi_i_in, Pi_i_in, \
-                        Params, r_min_in, Phi_f_in, Omega_i=None, depo_method='NGP'):
+                        Params, r_min_in, Phi_f_in, Omega_i=None, depo_method='NGP',
+                        sm_dx=0):
         """Sample function of setting-up initial data
         Parameters
         ----------
@@ -738,6 +762,7 @@ class Metric:
 
         self.pdtype = Phi_i_in.dtype
         self.depo_method = depo_method
+        self.sm_dx = sm_dx
 
         if self.pdtype == npy.single:
             self.cdtype = npy.csingle

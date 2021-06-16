@@ -120,23 +120,23 @@ public:
                         double gamma = -(tau) - r;
 
                         double dt = -gamma / beta - alpha *  PW2(gamma) / PW3(beta);
-                        if(PW2(beta) - 4.0 * alpha * gamma >= 0 ){
-                            double dt1 = (-beta + sqrt(PW2(beta) - 4.0 * alpha * gamma))
-                                / (2.0 * alpha);
-                            double dt2 = (-beta - sqrt(PW2(beta) - 4.0 * alpha * gamma))
-                                / (2.0 * alpha);
-                            if(dt1 > 0 && dt1 < dtau)
-                                dt = dt1;
-                            else if(dt2 > 0 && dt2 < dtau)
-                                dt = dt2;
+
+                        if(dt < 0 || dt > dtau) {
+                            continue;
                         }
 
-                        if(dt < 0 || dt > dtau) continue;
 
+                        T lc_x = x + vx * dt + ax * dt * dt / 2;
+                        T lc_y = y + vy * dt + ay * dt * dt / 2;
+                        T lc_z = z + vz * dt + az * dt * dt / 2;
 
-                        T lc_x = x + vx * dt;
-                        T lc_y = y + vy * dt;
-                        T lc_z = z + vz * dt;
+                        // T lc_x = x + vx * dt ;
+                        // T lc_y = y + vy * dt ;
+                        // T lc_z = z + vz * dt ;
+
+                        vx = vx * (1.0 - dt / dtau) + next_vx * (dt / dtau);
+                        vy = vy * (1.0 - dt / dtau) + next_vy * (dt / dtau);
+                        vz = vz * (1.0 - dt / dtau) + next_vz * (dt / dtau);
                         std::vector<T> vec{lc_x, lc_y, lc_z, (T)vx, (T)vy, (T)vz};
 
 #pragma omp critical

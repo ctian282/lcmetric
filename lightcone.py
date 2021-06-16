@@ -230,6 +230,10 @@ class Lightcone:
         else:
             raise ValueError('depo_method is not specified!')
 
+        sm_dx = 0
+        if hasattr(self, 'smoothing') == True and self.smoothing == True:
+            sm_dx = self.L_snap / self.N_snap
+
         self.met.init_from_slice(self.init_z,
                                  self.init_r,
                                  self.delta,
@@ -240,7 +244,8 @@ class Lightcone:
                                  self.final_r,
                                  self.Phi_f,
                                  Omega_i=self.Omega_i,
-                                 depo_method=depo_method)
+                                 depo_method=depo_method,
+                                 sm_dx=sm_dx)
 
 
 class LightconeFromConePhi(Lightcone):
@@ -802,6 +807,7 @@ class LightconeFromSnaps(Lightcone):
 
         self.depo_method = kwargs.get('depo_method', 'NGP')
         self.linear_Omega = kwargs.get('linear_Omega', True)
+        self.smoothing = kwargs.get('smoothing', False)
         self.lc_shift = kwargs.get('lc_shift', 0)
 
         if (zel_z is not None):
