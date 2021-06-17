@@ -72,7 +72,7 @@ class Lensing:
 
             if self.use_alm is True:
                 if hasattr(self.met, 'Phi_hier') is False:
-                    raise ValueError('use_alm is True, but Phi_hier is missing!')
+                    raise AttributeError('use_alm is True, but Phi_hier is missing!')
 
                 self.Phi = self.met.Phi_hier[0]
             else:
@@ -89,9 +89,22 @@ class Lensing:
                 self.dr_list = npy.asarray(npy.zeros(NR+1))
                 for n in range(self.NR+1):
                     self.dr_list[n] = (self.init_r - self.final_r) / self.NR
+        elif mode == 'ISW_approx_snap':
+            # Using the method introduced in Cai. 2010
+            self.L_snap = kwargs['L_snap']
+            self.N_snap_part = kwargs['N_snap_part']
+            self.cosmo_paras = kwargs['cosmo_paras']
+
+            self.Phi = kwargs['Phi']
+            self.Omega = kwargs['Omega']
+            self.r_list = kwargs['r_list']
+            self.z_list = kwargs['z_list']
+            self.N_snap = self.Phi.shape[0]
+
+
+
         else:
             raise ValueError('Mode can not be processed!')
-
         self.has_tar = False
 
 
@@ -137,14 +150,66 @@ class Lensing:
 
 ######################Finishing lensing potential thing##########################
 
+    # Calculating ISW linear growth G(t) = \dot{a} D(t)(1 - \beta(t)) / a(t)^2
+    def linear_growth(self, r):
+        zr = ut.r2z(r, self.cosmo_paras['h']*100,
+                    self.cosmo_paras['Omega_m'], self.cosmo_paras['Omega_L'])
+        # Groth factor
+        Dr = ut.Dz(zr, self.cosmo_paras['h']*100,
+                    self.cosmo_paras['Omega_m'], self.cosmo_paras['Omega_L'])
+        Hubble = ut.H(zr, self.cosmo_paras['h']*100,
+                    self.cosmo_paras['Omega_m'], self.cosmo_paras['Omega_L'])
+        Gr =Hubble * (1 + zr)**2 * Dr * (((self.cosmo_paras['Omega_m'] * (1 + zr)**3 ) \
+                             / (self.cosmo_paras['Omega_m'] * (1 + zr)**3
+                                + self.cosmo_paras['Omega_L']))**0.55 - 1)
+        return Gr
+
+    def ISW_int(self, r, nsnap):
+        # growth at r
+
+        Gr = self.linear_growth(r)
+
+        rl = self.r_list[nsnap]
+        Grl = self.linear_growth(rl)
+
+        rr = self.r_list[nsnap + 1]
+        Grr = self.linear_growth(rr)
+
+        wl = (rr - r)/ (rr - rl)
+        wr = 1 - wl
+
+        if r < rl or r > rr:
+            raise ValueError('r is not within rl and rr!')
+
+        return (self.Omega[nsnap] / Grl * wl + self.Omega[nsnap + 1] / Grr * wr ) * Gr
+
+    def gen_snaps_ISW(self):
+
+        if(self.r_list[0] > self.final_r):
+            self.final_r = self.r_list[0] * 1.001
+
+        res = npy.zeros(self.Omega.shape[1])
+
+        for nr in range(self.NR):
+
+            r = nr * (self.init_r - self.final_r) / self.NR + self.final_r
+
+            for nsnap in range(len(self.r_list) - 1):
+                if(self.r_list[nsnap + 1] > r):
+                    break
+            if(nsnap == len(self.r_list) - 1):
+                break
+
+            res += self.ISW_int(r, nsnap)
+
+        return res * (self.init_r - self.final_r) / self.NR
+
     def set_sources(self, **kwargs):
 
         if(kwargs['init_with_hp_tars'] is True):
             self.r = kwargs['r']
 
             nside = kwargs.get('nside', self.NSIDE)
-            if (self.r < self.final_r or self.r > self.init_r):
-                raise ValueError('r is too large or too small!')
 
             if (self.mode is 'ray_tracing'):
                 self.geo.init_with_healpix_tars(self.r, nside)
@@ -182,6 +247,10 @@ class Lensing:
             return self.gen_snaps_lensing_conv(self.r)
         elif(self.mode is 'born_approx_lc'):
             return self.gen_lc_lensing_conv(self.r)
+        elif self.mode == 'ISW_approx_lc':
+            return self.gen_lc_ISW(self.r)
+        elif self.mode == 'ISW_approx_snap':
+            return self.gen_lc_ISW(self.r)
 
     def gen_fields_for_rt(self):
         Omega = ut.np_fderv1(

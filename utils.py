@@ -209,6 +209,16 @@ def r2z(r, Hubble, Omega_m, Omega_L):
                                          args=(r, Hubble, Omega_m, Omega_L)).x
 
 
+def Dz_int(a, Hubble, Omega_m, Omega_L):
+    return (a * H(1 / a - 1, Hubble, Omega_m, Omega_L) * (1 / a))**-3
+
+
+# Linear growth
+def Dz(z, Hubble, Omega_m, Omega_L):
+    return (H(z, Hubble, Omega_m, Omega_L) * (1 + z))**1 * \
+    scpy.integrate.quad(Dz_int, 0, 1/(z + 1), args=(Hubble, Omega_m, Omega_L))[0]
+
+
 def unf_read_file(file, p_list=[], np=7):
     with open(file, mode="rb") as f:
         tot_n = 0

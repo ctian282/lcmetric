@@ -894,6 +894,9 @@ class LightconeFromSnaps(Lightcone):
             self.Pi = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
             self.dPhi = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
             self.Omega = npy.zeros((self.NR + 1, self.NPIX), dtype=self.pdtype)
+
+            self.r_list = npy.zeros(self.NR + 1)
+            self.z_list = npy.zeros(self.NR + 1)
             #for fi in range(init_snap_i, final_snap_i - 1, -1):
             for fi in range(self.n_snaps - 1, 0, -1):
                 ni = self.NR - (self.n_snaps - 1 - fi)
@@ -903,6 +906,9 @@ class LightconeFromSnaps(Lightcone):
                 r = scpy.integrate.quad(
                     self.Hint, 0,
                     files[fi].attrs['Redshift'])[0] + self.lc_shift
+
+                self.r_list[ni] = r
+                self.z_list[ni] = files[fi].attrs['Redshift']
 
                 rf = (files[fi].to_mesh(self.N_snap, dtype=self.pdtype).to_real_field(normalize=False)  \
                       * ( self.N_snap**3 / files[fi]['Position'].shape[0] ) - 1.0 )
