@@ -510,6 +510,7 @@ class LightconeFromCone(Lightcone):
 
         self.depo_method = kwargs.get('depo_method', 'NGP')
         self.linear_Omega = kwargs.get('linear_Omega', True)
+        self.smoothing = kwargs.get('smoothing', False)
 
         # Initial comoving distance
         self.init_r = scpy.integrate.quad(self.Hint, 0, init_z)[0]
