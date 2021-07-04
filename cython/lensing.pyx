@@ -66,6 +66,7 @@ class Lensing:
             self.L_snap = kwargs['L_snap']
             self.N_snap_part = kwargs['N_snap_part']
             self.cosmo_paras = kwargs['cosmo_paras']
+            self.sm_dx = kwargs.get('sm_dx', 0)
         elif(mode is 'born_approx_snap'):
 
             self.use_alm = kwargs.get('use_alm', False)
@@ -226,6 +227,11 @@ class Lensing:
             * self.cosmo_paras['Omega_m'] * \
             self.L_snap**3 / self.N_snap_part / resol * \
             (self.kappa1 - self.kappa2 / r)
+        if self.sm_dx > 0:
+            for nr in range(self.NR):
+                rr = nr * ((self.init_r - self.final_r) / self.NR) + self.final_r
+                temp[nr] = hp.smoothmap(temp[nr], fwhm = self.sm_dx/rr/2)
+
         lower_r_bin = \
             int(npy.floor(
                 (r - self.final_r) / ((self.init_r - self.final_r) / self.NR)))
