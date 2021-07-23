@@ -748,6 +748,14 @@ class Metric:
         r_min_in: float
             Final radial distance at z_f
         Phi_f_in: float, shape(NPIX)
+
+        Omega_i: float [NPIX], initial Omega; if none, use linear Omega
+
+        depo_method: str, default: 'NGP'
+        will determine the window function applied to the delta and v
+
+        sd_dx: float, default:0
+        smoothing width for delta and v, in rad
         Returns
         -------
         void

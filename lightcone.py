@@ -498,6 +498,17 @@ class LightconeFromCone(Lightcone):
         lensing_kappa: bool
         If also deposite particles when reading light-cone data ot calculate
         lensing convergence
+
+        chunk: int, data trunk for reading, set it according to your memory size
+
+        depo_method: string:'NGP'
+        mass depositing scheme, 'NGP' or 'CIC'
+
+        linear_Omega: bool: True
+        use linear approximation for the initial Omega
+
+        smoothing: bool: False
+        whether do the gaussian smoothing
         """
         Lightcone.__init__(self, origin, cosmo_paras, L_snap, N_snap, NR,
                            NSIDE, **kwargs)
