@@ -1,29 +1,30 @@
-# lc_metric
-Metric reconstruction from light-cone data only
+# LC-Metric
+Metric reconstruction from light cone data only
 
-# Installation 
+# Installation
 ```shell
-cd lc_metric
+cd lcmetric
 python setup.py build_ext --inplace
 ```
-Then import 
+Then import
 ```python
-import lcmetric 
-import lcmetric.lightcone as lightcone #main module building metric
-import lcmetric.utils as ut #utilities written in python
-import lcmetric.clightcone_CIC as lc_CIC #c utility that does CIC deposit to light-cone
-import lcmetric.cutils as utC #c utility, under construction, for interpolation from cartesian mesh only
-```
+
+import lcmetric
+import lcmetric.lightcone as lc # main module building metric
+import lcmetric.utils as # utilities written in python
+import lcmetric.cgeodesic as geo # geodesic module doing ray-tracing
+import lcmetric.lensing as lensing # lensing module
+import lcmetric.clcdensity as dens # module restoring light cone from snapshots
 
 # Build metric
 ```python
-lc = lightcone.Lightcone(NSIDE, epsilon = 1e-12,grid='healpy',  alm_iter = 50,
-                    depth = 5, n_vcycles = 100, npre = 16, npost = 16, lmax = 2*NSIDE-1, verbose=False)
-lc.init_from_slice(init_z, init_r, delta, vw, Phi_i, Pi_i, 
-                       cosmo_paras, final_z, final_r, Phi_f)
-lc.build_lcmetric()
+
+# See lightcone.py for details for parameter setting
+lc = lc.LightconeFromCone(lc_path, init_snap_path, final_snap_path, origin,
+                         cosmo_paras, L_snap, N_snap, init_z, final_z,
+                         NR, NSIDE, zel_z, zel_snap_path, cone_type='UNFORMATTED',
+                                snap_type='Gadget1', lensing_kappa=True, dtype='f4',
+                                chunk=400000000, linear_Omega=False, depo_method='CIC', smoothing=True)
+# Multigrid relaxing
+lc_relx.init_build_lcmetric()
 ```
-
-The DTFE component is included, however, only 0.1% difference in power spectrum is identified between DTFE interpolated velocity field and CIC velocity field. So currently, a CIC velocity field is recommended. See a sample jupyter nb for more detail.
-
-
