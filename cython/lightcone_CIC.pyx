@@ -26,6 +26,16 @@ cpdef deposit(real_t [:,::1] particles, double [::1] origin, real_t [:,::1] delt
     else:
         raise ValueError('Depo method is not supported')
 
+cpdef deposit_ang(real_t [:,::1] particles, double [::1] origin, real_t [:,::1] delta, \
+              double density_count,                                          \
+                  real_t [:,::1] vw, real_t [:,::1] vtheta, real_t [:,::1] vphi, real_t [:,::1] counts, \
+              double max_r, double min_r, int NR, int NSIDE, depo_method, double shift=0):
+        lc_CIC.CIC_deposit_ang(&particles[0,0], &origin[0], &delta[0,0], &vw[0,0], &counts[0,0],
+                           nparticles, density_count,
+                           max_r, min_r, NR, NSIDE, shift)
+
+
+
 cpdef lensing_kappa_deposit(real_t [:,::1] particles, double [::1] a, double [::1] origin,\
               real_t [:,::1] kappa1, real_t [:,::1] kappa2, \
                             double max_r, double min_r, int NR, int NSIDE, double shift=0):

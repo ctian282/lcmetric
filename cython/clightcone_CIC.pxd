@@ -8,6 +8,12 @@ cdef extern from "c++/lightcone_CIC.h":
                  idx_t nparticles, double count_density,
                  double max_r, double min_r, int NR, int NSIDE, double shift) except +
 
+     void CIC_deposit_ang[T](
+         T *particles, double *origin, T *delta,
+                 T *vw, T *vtheta, T*vphi, T *counts,
+                 idx_t nparticles, double count_density,
+                 double max_r, double min_r, int NR, int NSIDE, double shift) except +
+
      void NGP_deposit[T](
          T *particles, double *origin, T *delta,
                  T *vw, T *counts,
