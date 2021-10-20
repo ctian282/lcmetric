@@ -1,6 +1,11 @@
 # LC-Metric
 Metric reconstruction from light cone data only
 
+# Prerequisite
+
+`Healpy`, `Healpix-Cxx`, `cython`
+
+
 # Installation
 ```shell
 cd lcmetric
